@@ -2,26 +2,26 @@ import React from 'react';
 import { useAppStore } from '../store/useAppStore';
 
 const Playlist = () => {
-    const { currentStep, setCurrentStep, channels, playlistClips, addClip, moveClip, deleteClip, selectedChannelId } = useAppStore();
+    const { currentStep, setCurrentStep, channels, playlistClips, addClip, moveClip, deleteClip, selectedChannelId, sequenceLength } = useAppStore();
     const [draggingClip, setDraggingClip] = React.useState(null);
     const [mouseMode, setMouseMode] = React.useState('none'); // 'none', 'painting', 'erasing'
 
     const handleRulerClick = (e) => {
         const rect = e.currentTarget.getBoundingClientRect();
         const x = e.clientX - rect.left;
-        const newStep = Math.floor(x / 32) * 16; // Seek to bar start
-        setCurrentStep(newStep);
+        const newBlock = Math.floor(x / 32);
+        setCurrentStep(newBlock * sequenceLength);
     };
 
     const handleMouseInteraction = (x, trackIndex, mode) => {
-        const startTime = Math.floor(x / 32) * 16;
+        const blockIndex = Math.floor(x / 32);
         const channelId = channels[trackIndex]?.id;
         if (!channelId) return;
 
-        const existingClip = playlistClips.find(c => c.channelId === channelId && c.startTime === startTime);
+        const existingClip = playlistClips.find(c => c.channelId === channelId && c.blockIndex === blockIndex);
 
         if (mode === 'painting' && !existingClip) {
-            addClip({ channelId, startTime, duration: 16 });
+            addClip({ channelId, blockIndex, blockCount: 1 });
         } else if (mode === 'erasing' && existingClip) {
             deleteClip(existingClip.id);
         }
@@ -59,13 +59,13 @@ const Playlist = () => {
             return;
         }
         e.stopPropagation();
-        setDraggingClip({ clip, startX: e.clientX, originalStart: clip.startTime });
+        setDraggingClip({ clip, startX: e.clientX, originalBlockIndex: clip.blockIndex });
 
         const onMouseMove = (moveEvent) => {
             const deltaX = moveEvent.clientX - e.clientX;
-            const stepDelta = Math.round(deltaX / 32) * 16;
-            const newStartTime = Math.max(0, clip.startTime + stepDelta);
-            moveClip(clip.id, newStartTime);
+            const blockDelta = Math.round(deltaX / 32);
+            const newBlockIndex = Math.max(0, clip.blockIndex + blockDelta);
+            moveClip(clip.id, newBlockIndex);
         };
 
         const onMouseUp = () => {
@@ -94,7 +94,7 @@ const Playlist = () => {
 
             <div style={{ flex: 1, display: 'flex', position: 'relative', overflow: 'auto' }}>
                 {/* Track Headers */}
-                <div style={{ width: '80px', flexShrink: 0, background: '#1a1a1a', borderRight: '1px solid #333' }}>
+                <div style={{ width: '80px', flexShrink: 0, background: '#1a1a1a', borderRight: '1px solid #333', position: 'sticky', left: 0, zIndex: 100 }}>
                     <div style={{ height: '24px', background: '#222', borderBottom: '1px solid #333' }} /> {/* Ruler header spacer */}
                     {channels.map((ch, i) => (
                         <div key={ch.id} style={{
@@ -130,7 +130,7 @@ const Playlist = () => {
                             <div key={i} style={{
                                 position: 'absolute',
                                 left: i * 32,
-                                fontSize: '18px',
+                                fontSize: '10px',
                                 color: '#666',
                                 borderLeft: '1px solid #444',
                                 height: '100%',
@@ -165,8 +165,8 @@ const Playlist = () => {
                                             onContextMenu={(e) => e.preventDefault()}
                                             style={{
                                                 position: 'absolute',
-                                                left: `${(clip.startTime / 16) * 32}px`, // 16 steps = 1 bar = 32px
-                                                width: `${(clip.duration / 16) * 32}px`,
+                                                left: `${clip.blockIndex * 32}px`,
+                                                width: `${clip.blockCount * 32}px`,
                                                 height: '36px',
                                                 top: '2px',
                                                 backgroundColor: (ch.color || 'var(--primary)') + '44',
@@ -190,7 +190,7 @@ const Playlist = () => {
                         <div style={{
                             position: 'absolute',
                             top: 0,
-                            left: `${(currentStep / 16) * 32}px`,
+                            left: `${(currentStep / sequenceLength) * 32}px`,
                             width: '2px',
                             height: '100%',
                             background: 'white',

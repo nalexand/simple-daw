@@ -8,15 +8,17 @@ export const useAppStore = create((set) => ({
     masterVolume: 0.8,
     masterReverb: 0.2,
     masterWidth: 0.1, // 3D Sound
+    sequenceLength: 16,
+    setSequenceLength: (length) => set({ sequenceLength: length }),
     channels: [
-        { id: '1', name: 'Kick', type: 'sampler', steps: Array(16).fill(false), notes: [], volume: 0.8, pan: 0, mute: false, solo: false, color: '#ff4d4d' },
-        { id: '2', name: 'Snare', type: 'sampler', steps: Array(16).fill(false), notes: [], volume: 0.8, pan: 0, mute: false, solo: false, color: '#4dff4d' },
-        { id: '3', name: 'HiHat', type: 'sampler', steps: Array(16).fill(false), notes: [], volume: 0.8, pan: 0, mute: false, solo: false, color: '#4d4dff' },
-        { id: '4', name: 'Clap', type: 'sampler', steps: Array(16).fill(false), notes: [], volume: 0.8, pan: 0, mute: false, solo: false, color: '#ffff4d' },
-        { id: '5', name: 'Synth 1', type: 'synth', steps: Array(16).fill(false), notes: [], volume: 0.5, pan: 0, mute: false, solo: false, color: '#ff4dff' },
+        { id: '1', name: 'Kick', type: 'sampler', steps: Array(64).fill(false), notes: [], volume: 0.8, pan: 0, mute: false, solo: false, color: '#ff4d4d' },
+        { id: '2', name: 'Snare', type: 'sampler', steps: Array(64).fill(false), notes: [], volume: 0.8, pan: 0, mute: false, solo: false, color: '#4dff4d' },
+        { id: '3', name: 'HiHat', type: 'sampler', steps: Array(64).fill(false), notes: [], volume: 0.8, pan: 0, mute: false, solo: false, color: '#4d4dff' },
+        { id: '4', name: 'Clap', type: 'sampler', steps: Array(64).fill(false), notes: [], volume: 0.8, pan: 0, mute: false, solo: false, color: '#ffff4d' },
+        { id: '5', name: 'Synth 1', type: 'synth', steps: Array(64).fill(false), notes: [], volume: 0.5, pan: 0, mute: false, solo: false, color: '#ff4dff' },
     ],
     playlistClips: [
-        { id: 'c1', channelId: '1', startTime: 0, duration: 16 }, // Default pattern for Kick
+        { id: 'c1', channelId: '1', blockIndex: 0, blockCount: 1 },
     ],
 
     togglePlay: () => set((state) => ({ isPlaying: !state.isPlaying })),
@@ -38,8 +40,8 @@ export const useAppStore = create((set) => ({
     addClip: (clip) => set((state) => ({
         playlistClips: [...state.playlistClips, { ...clip, id: Math.random().toString(36).substr(2, 9) }]
     })),
-    moveClip: (clipId, startTime) => set((state) => ({
-        playlistClips: state.playlistClips.map(c => c.id === clipId ? { ...c, startTime } : c)
+    moveClip: (clipId, blockIndex) => set((state) => ({
+        playlistClips: state.playlistClips.map(c => c.id === clipId ? { ...c, blockIndex } : c)
     })),
     deleteClip: (clipId) => set((state) => ({
         playlistClips: state.playlistClips.filter(c => c.id !== clipId)
@@ -53,7 +55,7 @@ export const useAppStore = create((set) => ({
             name: name || `Synth ${state.channels.length + 1}`,
             type: type || 'synth',
             sampleUrl: sampleUrl || null,
-            steps: Array(16).fill(false),
+            steps: Array(64).fill(false),
             notes: [],
             volume: 0.5,
             pan: 0,

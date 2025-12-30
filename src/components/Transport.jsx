@@ -4,7 +4,7 @@ import { useAppStore } from '../store/useAppStore';
 import { audioEngine } from '../audio/AudioEngine';
 
 const Transport = () => {
-    const { isPlaying, togglePlay, bpm, setBpm, currentStep } = useAppStore();
+    const { isPlaying, togglePlay, bpm, setBpm, sequenceLength, setSequenceLength } = useAppStore();
 
     useEffect(() => {
         audioEngine.setBpm(bpm);
@@ -37,7 +37,7 @@ const Transport = () => {
                 </button>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', width: '100px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', width: '80px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: 'var(--text-dim)' }}>
                     <span>BPM</span>
                     <span>{bpm}</span>
@@ -52,19 +52,24 @@ const Transport = () => {
                 />
             </div>
 
-            <div style={{ flex: 1, display: 'flex', gap: '4px', height: '10px' }}>
-                {Array(16).fill(0).map((_, i) => (
-                    <div
-                        key={i}
-                        style={{
-                            flex: 1,
-                            backgroundColor: currentStep === i ? 'var(--primary)' : 'var(--bg-element)',
-                            borderRadius: '2px',
-                            transition: 'background-color 0.1s ease'
-                        }}
-                    />
-                ))}
+            <div style={{ display: 'flex', flexDirection: 'column', width: '80px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: 'var(--text-dim)' }}>
+                    <span>LEN</span>
+                    <span>{sequenceLength}</span>
+                </div>
+                <input
+                    type="range"
+                    min="16"
+                    max="64"
+                    step="4"
+                    value={sequenceLength}
+                    onChange={(e) => setSequenceLength(parseInt(e.target.value))}
+                    style={{ width: '100%', accentColor: 'var(--primary)' }}
+                />
             </div>
+
+            <div style={{ flex: 1 }} />
+
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-dim)' }}>
                 <Volume2 size={16} />

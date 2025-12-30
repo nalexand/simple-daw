@@ -6,7 +6,7 @@ const OCTAVES = [5, 4, 3, 2];
 const ALL_NOTES = OCTAVES.flatMap(o => NOTES.map(n => `${n}${o}`));
 
 const PianoRoll = ({ activeChannelId }) => {
-    const { channels, updateChannel, currentStep, setCurrentStep } = useAppStore();
+    const { channels, updateChannel, currentStep, setCurrentStep, sequenceLength } = useAppStore();
     const activeChannel = channels.find(c => c.id === activeChannelId);
     const gridRef = useRef(null);
 
@@ -16,8 +16,8 @@ const PianoRoll = ({ activeChannelId }) => {
     const handleRulerClick = (e) => {
         const rect = e.currentTarget.getBoundingClientRect();
         const x = e.clientX - rect.left;
-        const newStep = Math.floor(x / 32); // Each step is 32px
-        setCurrentStep(newStep);
+        const newStep = Math.floor(x / 32);
+        setCurrentStep(newStep % sequenceLength);
     };
 
     useEffect(() => {
@@ -50,7 +50,7 @@ const PianoRoll = ({ activeChannelId }) => {
             const startTime = Number(dragNote.time);
             const currentTime = Number(time);
             if (currentTime >= startTime) {
-                const newDuration = Math.max(1, Math.min(16, currentTime - startTime + 1));
+                const newDuration = Math.max(1, Math.min(64, currentTime - startTime + 1));
                 const newNotes = activeChannel.notes.map(n =>
                     (n.pitch === dragNote.pitch && Number(n.time) === startTime)
                         ? { ...n, duration: newDuration }
@@ -60,6 +60,8 @@ const PianoRoll = ({ activeChannelId }) => {
             }
         }
     };
+
+    const totalWidth = sequenceLength * 32;
 
     return (
         <div className="panel" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', userSelect: 'none' }}>
@@ -72,9 +74,9 @@ const PianoRoll = ({ activeChannelId }) => {
             </div>
 
             {/* Scroll Container for Vertical Sync */}
-            <div style={{ flex: 1, display: 'flex', overflowY: 'auto', background: '#111' }}>
+            <div style={{ flex: 1, display: 'flex', overflow: 'auto', background: '#111' }}>
                 {/* Keys */}
-                <div style={{ width: '60px', flexShrink: 0, borderRight: '1px solid #333', zIndex: 10, background: '#1a1a1a' }}>
+                <div style={{ width: '60px', flexShrink: 0, borderRight: '1px solid #333', zIndex: 10, background: '#1a1a1a', position: 'sticky', left: 0 }}>
                     <div style={{ height: '24px', borderBottom: '1px solid #222', backgroundColor: '#000' }} />
                     {ALL_NOTES.map(note => (
                         <div key={note} style={{
@@ -100,14 +102,14 @@ const PianoRoll = ({ activeChannelId }) => {
                         onClick={(e) => {
                             const rect = e.currentTarget.getBoundingClientRect();
                             const x = e.clientX - rect.left;
-                            setCurrentStep(Math.floor(x / 32));
+                            setCurrentStep(Math.floor(x / 32) % sequenceLength);
                         }}
-                        style={{ height: '24px', width: '1024px', background: '#1a1a1a', cursor: 'pointer', borderBottom: '1px solid #333' }}
+                        style={{ height: '24px', width: `${totalWidth}px`, background: '#1a1a1a', cursor: 'pointer', borderBottom: '1px solid #333' }}
                     />
                     <div
                         ref={gridRef} // gridRef moved here to the inner div
                         style={{
-                            width: '1024px', /* 32 steps * 32px */
+                            width: `${totalWidth}px`,
                             position: 'relative',
                             background: 'linear-gradient(90deg, #222 1px, transparent 1px), linear-gradient(#222 1px, transparent 1px)',
                             backgroundSize: '32px 24px',
@@ -116,7 +118,7 @@ const PianoRoll = ({ activeChannelId }) => {
                     >
                         {ALL_NOTES.map(note => (
                             <div key={note} style={{ display: 'flex', height: '24px' }}>
-                                {Array(32).fill(0).map((_, i) => {
+                                {Array(sequenceLength).fill(0).map((_, i) => {
                                     // Check if this cell is part of a saved note
                                     const noteAtCell = activeChannel.notes.find(n =>
                                         n.pitch === note &&
@@ -153,7 +155,7 @@ const PianoRoll = ({ activeChannelId }) => {
                         <div style={{
                             position: 'absolute',
                             top: 0,
-                            left: `${(currentStep % 32) * 32}px`,
+                            left: `${(currentStep % sequenceLength) * 32}px`,
                             width: '2px',
                             height: '100%',
                             background: 'rgba(255,255,255,0.4)',

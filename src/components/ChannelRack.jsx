@@ -24,7 +24,7 @@ const Step = ({ active, current, onClick }) => (
 );
 
 const ChannelRow = ({ channel }) => {
-    const { toggleStep, currentStep, selectedChannelId, setSelectedChannelId, deleteChannel } = useAppStore();
+    const { toggleStep, currentStep, selectedChannelId, setSelectedChannelId, deleteChannel, sequenceLength } = useAppStore();
     const isActive = selectedChannelId === channel.id;
 
     return (
@@ -33,32 +33,40 @@ const ChannelRow = ({ channel }) => {
             style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '15px',
-                padding: '10px 0',
                 borderBottom: '1px solid rgba(255,255,255,0.05)',
                 cursor: 'pointer',
-                backgroundColor: isActive ? 'rgba(255,140,0,0.1)' : 'transparent'
+                backgroundColor: isActive ? 'rgba(255,140,0,0.1)' : 'transparent',
+                width: 'max-content', // Important to allow parent to scroll
+                minWidth: '100%',
+                boxSizing: 'border-box'
             }}
         >
-            <div style={{ width: '120px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div style={{ width: '4px', height: '20px', background: channel.type === 'sampler' ? '#4a9eff' : '#ffcf4a' }} />
-                <span style={{ fontSize: '13px', fontWeight: isActive ? '700' : '500', color: isActive ? 'var(--primary)' : 'inherit' }}>{channel.name}</span>
-            </div>
+            {/* Sticky Track Info */}
+            <div style={{
+                width: '200px',
+                flexShrink: 0,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '10px 15px',
+                position: 'sticky',
+                left: 0,
+                backgroundColor: isActive ? 'rgba(45, 45, 45, 1)' : 'var(--bg-panel)',
+                zIndex: 2,
+                borderRight: '1px solid rgba(255,255,255,0.05)'
+            }}>
+                <div style={{ width: '4px', height: '20px', flexShrink: 0, background: channel.type === 'sampler' ? '#4a9eff' : '#ffcf4a' }} />
 
-            <div style={{ display: 'flex', gap: '4px' }}>
-                {channel.steps.map((active, i) => (
-                    <React.Fragment key={i}>
-                        <Step
-                            active={active}
-                            current={currentStep === i}
-                            onClick={() => toggleStep(channel.id, i)}
-                        />
-                        {(i + 1) % 4 === 0 && i !== 15 && <div style={{ width: '8px' }} />}
-                    </React.Fragment>
-                ))}
-            </div>
+                <span style={{
+                    fontSize: '13px',
+                    fontWeight: isActive ? '700' : '500',
+                    color: isActive ? 'var(--primary)' : 'inherit',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    flex: 1
+                }}>{channel.name}</span>
 
-            <div style={{ display: 'flex', gap: '10px', marginLeft: 'auto' }}>
                 <button
                     className="btn-icon"
                     onClick={(e) => {
@@ -78,7 +86,8 @@ const ChannelRow = ({ channel }) => {
                         transition: 'all 0.2s',
                         background: 'transparent',
                         border: 'none',
-                        cursor: 'pointer'
+                        cursor: 'pointer',
+                        flexShrink: 0
                     }}
                     onMouseEnter={(e) => e.target.style.color = '#ff4d4d'}
                     onMouseLeave={(e) => e.target.style.color = 'var(--text-dim)'}
@@ -86,6 +95,27 @@ const ChannelRow = ({ channel }) => {
                 >
                     <Trash2 size={16} />
                 </button>
+            </div>
+
+            {/* Steps Section */}
+            <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                padding: '10px 15px'
+            }}>
+                <div style={{ display: 'flex', gap: '4px' }}>
+                    {channel.steps.slice(0, sequenceLength).map((active, i) => (
+                        <React.Fragment key={i}>
+                            <Step
+                                active={active}
+                                current={(currentStep % sequenceLength) === i}
+                                onClick={() => toggleStep(channel.id, i)}
+                            />
+                            {(i + 1) % 4 === 0 && (i + 1) !== sequenceLength && <div style={{ minWidth: '8px' }} />}
+                        </React.Fragment>
+                    ))}
+                </div>
             </div>
         </div>
     );
@@ -104,15 +134,15 @@ const ChannelRack = () => {
     ];
 
     return (
-        <div className="panel" style={{ flex: 1, padding: '20px', overflowY: 'auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px', alignItems: 'center', position: 'relative' }}>
-                <h3 style={{ fontSize: '14px', textTransform: 'uppercase', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Music size={16} /> Channel Rack
-                </h3>
+        <div className="panel" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <div style={{ padding: '10px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative', fontSize: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span>CHANNEL RACK</span>
+                </div>
                 <div style={{ position: 'relative' }}>
                     <button
                         className="btn"
-                        style={{ fontSize: '12px' }}
+                        style={{ fontSize: '10px', padding: '4px 8px' }}
                         onClick={() => setShowAddMenu(!showAddMenu)}
                     >
                         + ADD TRACK
@@ -126,7 +156,7 @@ const ChannelRack = () => {
                             border: '1px solid var(--border)',
                             borderRadius: '4px',
                             zIndex: 100,
-                            width: '160px', // Wider for the search text
+                            width: '160px',
                             boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
                             marginTop: '5px'
                         }}>
@@ -176,10 +206,12 @@ const ChannelRack = () => {
                 </div>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-                {channels.map(ch => (
-                    <ChannelRow key={ch.id} channel={ch} />
-                ))}
+            <div style={{ flex: 1, overflow: 'auto' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
+                    {channels.map(ch => (
+                        <ChannelRow key={ch.id} channel={ch} />
+                    ))}
+                </div>
             </div>
         </div>
     );

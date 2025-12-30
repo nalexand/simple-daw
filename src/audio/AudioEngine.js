@@ -103,7 +103,7 @@ class AudioEngine {
         channels.forEach(ch => this.getOrCreateChannelNodes(ch.id, ch.name));
 
         Tone.getTransport().scheduleRepeat((time) => {
-            const { currentStep, setCurrentStep, channels, playlistClips } = useAppStore.getState();
+            const { currentStep, setCurrentStep, channels, playlistClips, sequenceLength } = useAppStore.getState();
 
             // Keep master effects in sync with store
             this.updateMasterEffects();
@@ -121,15 +121,14 @@ class AudioEngine {
                 }
 
                 // Check if there is a clip active for this channel at this step
-                // Clip startTime is in steps, duration is in steps.
                 const activeClip = playlistClips.find(clip =>
                     clip.channelId === channel.id &&
-                    currentStep >= clip.startTime &&
-                    currentStep < clip.startTime + clip.duration
+                    currentStep >= clip.blockIndex * sequenceLength &&
+                    currentStep < (clip.blockIndex + clip.blockCount) * sequenceLength
                 );
 
                 if (activeClip && !channel.mute) {
-                    const stepInPattern = (currentStep - activeClip.startTime) % 16;
+                    const stepInPattern = (currentStep - activeClip.blockIndex * sequenceLength) % sequenceLength;
 
                     // Play Step Sequencer
                     if (channel.steps[stepInPattern]) {

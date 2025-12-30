@@ -99,7 +99,7 @@ function App() {
         {/* Workspace */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '10px', overflow: 'hidden' }}>
           <div style={{ display: 'flex', gap: '10px', height: '400px', minHeight: 0 }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', flex: '0 0 450px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', flex: '0 0 50%', maxWidth: '50%', minWidth: 0 }}>
               <ChannelRack />
             </div>
             <PianoRoll activeChannelId={selectedChannelId} />
