@@ -21,6 +21,7 @@ class AudioEngine {
         // PolySynth is shared
         this.polySynth = new Tone.PolySynth(Tone.Synth).connect(this.masterBus);
 
+        this.isExporting = false;
         this.recorder = new Tone.Recorder();
         Tone.getDestination().connect(this.recorder);
     }
@@ -28,19 +29,32 @@ class AudioEngine {
     async exportToWav() {
         if (!this.initialized) await this.init();
 
+        this.isExporting = true; // Disable looping
+
         // Start recording
         this.recorder.start();
 
-        // Start transport at 0
-        const { setCurrentStep, togglePlay } = useAppStore.getState();
-        setCurrentStep(0);
+        // Calculate song duration
+        const { setCurrentStep, playlistClips, sequenceLength, bpm } = useAppStore.getState();
+
+        let minStart = 0;
+        let maxEnd = sequenceLength; // Default to 1 pattern length
+
+        if (playlistClips.length > 0) {
+            minStart = Math.min(...playlistClips.map(c => c.blockIndex * sequenceLength));
+            const endPoints = playlistClips.map(c => (c.blockIndex + c.blockCount) * sequenceLength);
+            maxEnd = Math.max(...endPoints);
+        }
+
+        // Add 1 extra pattern length for decay/tails
+        // We record from minStart to maxEnd + sequenceLength
+        const totalDurationSteps = (maxEnd - minStart) + sequenceLength;
+        const recordTime = (totalDurationSteps * 60) / (bpm * 4);
+
+        setCurrentStep(minStart); // Start from beginning of content (no empty start)
         Tone.getTransport().start();
 
-        // Record for 4 bars (assuming 128bpm)
-        // 4 bars * 4 beats * 60s / 128bpm = ~7.5 seconds
-        const recordTime = (4 * 4 * 60) / useAppStore.getState().bpm;
-
-        alert(`Exporting 4 bars (~${recordTime.toFixed(1)}s)... Please wait.`);
+        //alert(`Exporting ~${recordTime.toFixed(1)}s... Please wait.`);
 
         setTimeout(async () => {
             const recording = await this.recorder.stop();
@@ -49,8 +63,10 @@ class AudioEngine {
             anchor.download = "fl_studio_export.wav";
             anchor.href = url;
             anchor.click();
+
             Tone.getTransport().stop();
-            setCurrentStep(0);
+            this.isExporting = false; // Re-enable looping
+            setCurrentStep(minStart);
             alert("Export complete!");
         }, recordTime * 1000 + 500);
     }
@@ -105,6 +121,25 @@ class AudioEngine {
         Tone.getTransport().scheduleRepeat((time) => {
             const { currentStep, setCurrentStep, channels, playlistClips, sequenceLength } = useAppStore.getState();
 
+            // Calculate active loop range
+            let minStart = 0;
+            let maxEnd = 64; // Default to 4 bars if empty
+
+            if (playlistClips.length > 0) {
+                minStart = Math.min(...playlistClips.map(c => c.blockIndex * sequenceLength));
+                const endPoints = playlistClips.map(c => (c.blockIndex + c.blockCount) * sequenceLength);
+                maxEnd = Math.max(...endPoints);
+            }
+
+            // Loop Logic - Only loop if NOT exporting
+            if (!this.isExporting && currentStep >= maxEnd) {
+                // Loop back to start
+                setCurrentStep(minStart);
+                // Also reset Tone transport position if needed for sycronization, though we are driving steps manually
+                // But since we are inside the callback, we just set the next step state.
+                return;
+            }
+
             // Keep master effects in sync with store
             this.updateMasterEffects();
 
@@ -145,8 +180,7 @@ class AudioEngine {
                 }
             });
 
-            // Simple arrangement loop: 128 bars = 2048 steps
-            const nextStep = (currentStep + 1) % 2048;
+            const nextStep = currentStep + 1;
             setCurrentStep(nextStep);
         }, '16n');
 
