@@ -1,24 +1,30 @@
 import { create } from 'zustand';
 
+const getSavedProjects = () => {
+    try {
+        const item = localStorage.getItem('fl_studio_projects_list');
+        return item ? JSON.parse(item) : [];
+    } catch (e) {
+        console.error("Failed to load projects from storage:", e);
+        return [];
+    }
+};
+
 export const useAppStore = create((set) => ({
     isPlaying: false,
     bpm: 128,
     currentStep: 0,
     selectedChannelId: '1',
     masterVolume: 0.8,
-    masterReverb: 0.2,
-    masterWidth: 0.1, // 3D Sound
+    masterReverb: 0.0,
+    masterWidth: 0.0,
     sequenceLength: 16,
     setSequenceLength: (length) => set({ sequenceLength: length }),
     channels: [
-        { id: '1', name: 'Kick', type: 'sampler', steps: Array(64).fill(false), notes: [], volume: 0.8, pan: 0, mute: false, solo: false, color: '#ff4d4d' },
-        { id: '2', name: 'Snare', type: 'sampler', steps: Array(64).fill(false), notes: [], volume: 0.8, pan: 0, mute: false, solo: false, color: '#4dff4d' },
-        { id: '3', name: 'HiHat', type: 'sampler', steps: Array(64).fill(false), notes: [], volume: 0.8, pan: 0, mute: false, solo: false, color: '#4d4dff' },
-        { id: '4', name: 'Clap', type: 'sampler', steps: Array(64).fill(false), notes: [], volume: 0.8, pan: 0, mute: false, solo: false, color: '#ffff4d' },
-        { id: '5', name: 'Synth 1', type: 'synth', steps: Array(64).fill(false), notes: [], volume: 0.5, pan: 0, mute: false, solo: false, color: '#ff4dff' },
+
     ],
     playlistClips: [
-        { id: 'c1', channelId: '1', blockIndex: 0, blockCount: 1 },
+
     ],
 
     togglePlay: () => set((state) => ({ isPlaying: !state.isPlaying })),
@@ -48,8 +54,30 @@ export const useAppStore = create((set) => ({
     })),
     addChannel: (name, type, sampleUrl) => set((state) => {
         const id = Math.random().toString(36).substr(2, 9);
-        const colors = ['#ff4d4d', '#4dff4d', '#4d4dff', '#ffff4d', '#ff4dff', '#4dffff', '#ff994d', '#99ff4d', '#4d99ff'];
-        const randomColor = colors[Math.floor(Math.random() * colors.length)];
+
+        // 16 FL-Studio inspired distinct colors
+        const colors = [
+            '#FF3D3D', // Red
+            '#3DFF3D', // Green
+            '#3D3DFF', // Blue
+            '#FFFF3D', // Yellow
+            '#FF3DFF', // Magenta
+            '#3DFFFF', // Cyan
+            '#FF853D', // Orange
+            '#85FF3D', // Lime
+            '#3D85FF', // Azure
+            '#853DFF', // Purple
+            '#FF3D85', // Rose
+            '#FFD43D', // Gold
+            '#3DFF85', // Mint
+            '#D43DFF', // Violet
+            '#3DFFD4', // Aqua
+            '#D4FF3D'  // Chartreuse
+        ];
+
+        const nextColorIndex = state.channels.length % colors.length;
+        const channelColor = colors[nextColorIndex];
+
         const newChannel = {
             id,
             name: name || `Synth ${state.channels.length + 1}`,
@@ -57,11 +85,11 @@ export const useAppStore = create((set) => ({
             sampleUrl: sampleUrl || null,
             steps: Array(64).fill(false),
             notes: [],
-            volume: 0.5,
+            volume: 0.8,
             pan: 0,
             mute: false,
             solo: false,
-            color: randomColor
+            color: channelColor
         };
         return { channels: [...state.channels, newChannel] };
     }),
@@ -71,29 +99,63 @@ export const useAppStore = create((set) => ({
     })),
     isSoundSearchOpen: false,
     setSoundSearchOpen: (open) => set({ isSoundSearchOpen: open }),
-    saveProject: () => {
-        const state = useAppStore.getState();
-        const projectData = {
-            channels: state.channels,
-            playlistClips: state.playlistClips,
-            bpm: state.bpm
-        };
-        localStorage.setItem('fl_studio_project', JSON.stringify(projectData));
-        alert('Project saved to browser storage!');
-    },
-    loadProject: () => {
-        const saved = localStorage.getItem('fl_studio_project');
-        if (saved) {
-            const data = JSON.parse(saved);
-            set({
-                channels: data.channels,
-                playlistClips: data.playlistClips,
-                bpm: data.bpm,
-                selectedChannelId: data.channels[0]?.id || '1'
-            });
-            alert('Project loaded!');
-        } else {
-            alert('No saved project found.');
+
+    // Project Management
+    projects: getSavedProjects(),
+
+    saveProject: (name) => {
+        try {
+            const state = useAppStore.getState();
+
+            // Clean data to avoid circular refs or extra bloat
+            const cleanChannels = JSON.parse(JSON.stringify(state.channels));
+            const cleanClips = JSON.parse(JSON.stringify(state.playlistClips));
+
+            const projectData = {
+                id: Math.random().toString(36).substr(2, 9),
+                name: name,
+                date: new Date().toISOString(),
+                channels: cleanChannels,
+                playlistClips: cleanClips,
+                bpm: state.bpm,
+                sequenceLength: state.sequenceLength
+            };
+
+            // Update Local Storage List
+            const updatedProjects = [...state.projects, projectData];
+            set({ projects: updatedProjects });
+            localStorage.setItem('fl_studio_projects_list', JSON.stringify(updatedProjects));
+
+            // Download JSON File
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(projectData, null, 2));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", `${name}.json`);
+            document.body.appendChild(downloadAnchorNode);
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+
+            alert(`Project "${name}" saved and downloaded!`);
+        } catch (e) {
+            console.error("Save failed:", e);
+            alert("Error saving project. Storage might be full.");
         }
+    },
+
+    loadProject: (project) => {
+        set({
+            channels: project.channels,
+            playlistClips: project.playlistClips,
+            bpm: project.bpm,
+            sequenceLength: project.sequenceLength || 16,
+            selectedChannelId: project.channels[0]?.id || '1'
+        });
+        alert(`Project "${project.name}" loaded!`);
+    },
+
+    deleteProject: (projectId) => {
+        const updatedProjects = useAppStore.getState().projects.filter(p => p.id !== projectId);
+        set({ projects: updatedProjects });
+        localStorage.setItem('fl_studio_projects_list', JSON.stringify(updatedProjects));
     }
 }));

@@ -71,12 +71,6 @@ const Transport = () => {
             <div style={{ flex: 1 }} />
 
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-dim)' }}>
-                <Volume2 size={16} />
-                <div style={{ width: '60px', height: '4px', background: 'var(--bg-element)', borderRadius: '2px' }}>
-                    <div style={{ width: '80%', height: '100%', background: 'var(--accent)', borderRadius: '2px' }} />
-                </div>
-            </div>
         </div>
     );
 };

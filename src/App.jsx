@@ -7,11 +7,11 @@ import Playlist from './components/Playlist';
 import SoundSearchModal from './components/SoundSearchModal';
 import { useAppStore } from './store/useAppStore';
 import { audioEngine } from './audio/AudioEngine';
-import { Layers, ListMusic, Settings2, Activity, ChevronLeft, ChevronRight, Save, FolderOpen, Download } from 'lucide-react';
+import { Layers, ListMusic, Settings2, Activity, ChevronLeft, ChevronRight, Save, FolderOpen, Download, Trash2 } from 'lucide-react';
 
-function App() {
-  const { selectedChannelId, saveProject, loadProject } = useAppStore();
-  const [browserWidth, setBrowserWidth] = React.useState(430);
+const App = () => {
+  const { selectedChannelId, saveProject, loadProject, projects, deleteProject } = useAppStore();
+  const [browserWidth, setBrowserWidth] = React.useState(250); // Smaller default for file list
   const [isCollapsed, setIsCollapsed] = React.useState(false);
   const isResizing = React.useRef(false);
 
@@ -30,10 +30,15 @@ function App() {
   const handleMouseMove = React.useCallback((e) => {
     if (!isResizing.current) return;
     const newWidth = e.clientX;
-    if (newWidth > 150 && newWidth < 1200) {
+    if (newWidth > 150 && newWidth < 800) {
       setBrowserWidth(newWidth);
     }
   }, []);
+
+  const handleSave = () => {
+    const name = prompt("Enter project name:", `Project ${projects.length + 1}`);
+    if (name) saveProject(name);
+  };
 
   return (
     <>
@@ -54,8 +59,8 @@ function App() {
               <button className="btn" onClick={() => setIsCollapsed(false)}><ChevronRight size={16} /></button>
             ) : (
               <>
-                <button className="btn" title="Save Project" onClick={saveProject}><Save size={16} /></button>
-                <button className="btn" title="Load Project" onClick={loadProject}><FolderOpen size={16} /></button>
+                <button className="btn" title="Save Project" onClick={handleSave}><Save size={16} /></button>
+                <div style={{ width: '1px', background: 'var(--border)', margin: '0 5px' }} />
                 <button className="btn" title="Export WAV" onClick={() => audioEngine.exportToWav()}><Download size={16} /></button>
                 <button className="btn" onClick={() => setIsCollapsed(true)} style={{ marginLeft: 'auto' }}><ChevronLeft size={16} /></button>
               </>
@@ -65,12 +70,52 @@ function App() {
           {!isCollapsed && (
             <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
               <div style={{ padding: '20px', color: 'var(--text-dim)', fontSize: '12px', flex: 1, overflowY: 'auto' }}>
-                <div style={{ marginBottom: '10px', color: 'var(--text-main)' }}>Browser</div>
-                <div style={{ paddingLeft: '10px' }}>
-                  <div>📁 Packs</div>
-                  <div style={{ paddingLeft: '15px' }}>📁 Drums</div>
-                  <div style={{ paddingLeft: '15px' }}>📁 Instruments</div>
-                  <div>📁 Projects</div>
+                <div style={{ marginBottom: '10px', color: 'var(--text-main)', fontSize: '13px', fontWeight: 'bold' }}>PROJECTS</div>
+                {projects.length === 0 ? (
+                  <div style={{ fontStyle: 'italic' }}>No saved projects</div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    {projects.map(p => (
+                      <div
+                        key={p.id}
+                        style={{
+                          padding: '6px 8px',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          cursor: 'pointer',
+                          borderRadius: '4px'
+                        }}
+                        className="menu-item-hover"
+                        onClick={() => loadProject(p)}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#2a2a2a'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                      >
+                        <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                          <span style={{ fontSize: '12px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</span>
+                          <span style={{ fontSize: '10px', color: '#666' }}>{new Date(p.date).toLocaleDateString()}</span>
+                        </div>
+                        <Trash2
+                          size={12}
+                          color="#666"
+                          style={{ flexShrink: 0 }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (confirm(`Delete "${p.name}"?`)) deleteProject(p.id);
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div style={{ marginTop: '20px', padding: '10px', borderTop: '1px solid var(--border)' }}>
+                  <div style={{ marginBottom: '10px', color: 'var(--text-main)' }}>Browser</div>
+                  <div style={{ paddingLeft: '10px' }}>
+                    <div>📁 Packs</div>
+                    <div style={{ paddingLeft: '15px' }}>📁 Drums</div>
+                    <div style={{ paddingLeft: '15px' }}>📁 Instruments</div>
+                  </div>
                 </div>
               </div>
 

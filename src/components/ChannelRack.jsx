@@ -55,7 +55,7 @@ const ChannelRow = ({ channel }) => {
                 zIndex: 2,
                 borderRight: '1px solid rgba(255,255,255,0.05)'
             }}>
-                <div style={{ width: '4px', height: '20px', flexShrink: 0, background: channel.type === 'sampler' ? '#4a9eff' : '#ffcf4a' }} />
+                <div style={{ width: '4px', height: '20px', flexShrink: 0, background: channel.color || (channel.type === 'sampler' ? '#4a9eff' : '#ffcf4a') }} />
 
                 <span style={{
                     fontSize: '13px',
