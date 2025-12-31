@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { useAppStore } from '../store/useAppStore';
 import { X, Play, Plus, Search, Loader2 } from 'lucide-react';
 
@@ -8,6 +8,32 @@ const SoundSearchModal = () => {
     const [results, setResults] = React.useState([]);
     const [loading, setLoading] = React.useState(false);
     const [apiKey, setApiKey] = React.useState('');
+
+    const currentAudioRef = useRef(null);
+
+    // 2. Stop audio when the modal is closed
+    useEffect(() => {
+        if (!isSoundSearchOpen && currentAudioRef.current) {
+            currentAudioRef.current.pause();
+            currentAudioRef.current = null;
+        }
+    }, [isSoundSearchOpen]);
+
+    // 3. New function to handle playing sounds exclusively
+    const handlePreview = (url) => {
+        if (!url) return;
+
+        // If there is a sound playing, pause it and reset time
+        if (currentAudioRef.current) {
+            currentAudioRef.current.pause();
+            currentAudioRef.current.currentTime = 0;
+        }
+
+        // Create new audio, save it to ref, and play
+        const newAudio = new Audio(url);
+        currentAudioRef.current = newAudio;
+        newAudio.play().catch(e => console.log('Audio play interrupted', e));
+    };
 
     if (!isSoundSearchOpen) return null;
 
@@ -47,6 +73,12 @@ const SoundSearchModal = () => {
             alert('No suitable audio preview found for this sound.');
             return;
         }
+
+        // Stop preview before adding
+        if (currentAudioRef.current) {
+            currentAudioRef.current.pause();
+        }
+
         // Use the sound name and type 'sampler'
         addChannel(sound.name, 'sampler', url);
         setSoundSearchOpen(false);
@@ -139,11 +171,7 @@ const SoundSearchModal = () => {
                             </div>
                             <div style={{ display: 'flex', gap: '8px' }}>
                                 <button className="btn btn-icon btn-sm" onClick={() => {
-                                    const url = getBestPreview(sound.previews);
-                                    if (url) {
-                                        const audio = new Audio(url);
-                                        audio.play();
-                                    }
+                                    handlePreview(getBestPreview(sound.previews));
                                 }} title="Preview"><Play size={14} /></button>
                                 <button className="btn btn-primary btn-sm" onClick={() => handleAddSound(sound)} title="Add to project">
                                     <Plus size={16} />
