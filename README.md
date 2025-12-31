@@ -2,7 +2,8 @@
 
 A modern, web-based Digital Audio Workstation built with React, Vite, and Tone.js. Create beats, melodies, and arrangements directly in your browser.
 
-![DAW Screenshot](https://via.placeholder.com/800x450.png?text=Simple+DAW+Screenshot)
+![DAW Screenshot](https://englyk.com/SimpleDAW.jpg)
+
 
 ## Features
 
