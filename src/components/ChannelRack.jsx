@@ -36,7 +36,7 @@ const ChannelRow = ({ channel }) => {
                 borderBottom: '1px solid rgba(255,255,255,0.05)',
                 cursor: 'pointer',
                 backgroundColor: isActive ? 'rgba(255,140,0,0.1)' : 'transparent',
-                width: 'max-content', // Important to allow parent to scroll
+                width: 'max-content',
                 minWidth: '100%',
                 boxSizing: 'border-box'
             }}

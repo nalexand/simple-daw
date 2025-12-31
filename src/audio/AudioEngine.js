@@ -4,21 +4,18 @@ import { useAppStore } from '../store/useAppStore';
 class AudioEngine {
     constructor() {
         this.samplers = new Map();
-        this.synths = new Map(); // channelId -> synth instance
-        this.channelNodes = new Map(); // id -> { volume: Tone.Volume, panner: Tone.Panner }
+        this.synths = new Map();
+        this.channelNodes = new Map();
         this.initialized = false;
 
-        // Master Chain
         this.masterVolume = new Tone.Volume(0).toDestination();
         this.reverb = new Tone.Freeverb({ roomSize: 0.7, dampening: 3000, wet: 0.2 }).connect(this.masterVolume);
 
-        // Chorus used as a "widener" for 3D effect
         this.widener = new Tone.Chorus({ frequency: 1.5, delayTime: 3.5, depth: 0.7, wet: 0.1 }).connect(this.reverb);
         this.widener.start();
 
         this.masterBus = new Tone.Volume(0).connect(this.widener);
 
-        // PolySynth is shared
         this.polySynth = new Tone.PolySynth(Tone.Synth).connect(this.masterBus);
 
         this.isExporting = false;
@@ -29,16 +26,14 @@ class AudioEngine {
     async exportToWav() {
         if (!this.initialized) await this.init();
 
-        this.isExporting = true; // Disable looping
+        this.isExporting = true;
 
-        // Start recording
         this.recorder.start();
 
-        // Calculate song duration
         const { setCurrentStep, playlistClips, sequenceLength, bpm } = useAppStore.getState();
 
         let minStart = 0;
-        let maxEnd = sequenceLength; // Default to 1 pattern length
+        let maxEnd = sequenceLength;
 
         if (playlistClips.length > 0) {
             minStart = Math.min(...playlistClips.map(c => c.blockIndex * sequenceLength));
@@ -51,10 +46,8 @@ class AudioEngine {
         const totalDurationSteps = (maxEnd - minStart) + sequenceLength;
         const recordTime = (totalDurationSteps * 60) / (bpm * 4);
 
-        setCurrentStep(minStart); // Start from beginning of content (no empty start)
+        setCurrentStep(minStart);
         Tone.getTransport().start();
-
-        //alert(`Exporting ~${recordTime.toFixed(1)}s... Please wait.`);
 
         setTimeout(async () => {
             const recording = await this.recorder.stop();
@@ -65,7 +58,7 @@ class AudioEngine {
             anchor.click();
 
             Tone.getTransport().stop();
-            this.isExporting = false; // Re-enable looping
+            this.isExporting = false;
             setCurrentStep(minStart);
             alert("Export complete!");
         }, recordTime * 1000 + 500);
@@ -114,16 +107,14 @@ class AudioEngine {
         if (this.initialized) return;
         await Tone.start();
 
-        // Fix: Pre-initialize nodes for existing channels
         const { channels } = useAppStore.getState();
         channels.forEach(ch => this.getOrCreateChannelNodes(ch.id, ch.name));
 
         Tone.getTransport().scheduleRepeat((time) => {
             const { currentStep, setCurrentStep, channels, playlistClips, sequenceLength } = useAppStore.getState();
 
-            // Calculate active loop range
             let minStart = 0;
-            let maxEnd = 64; // Default to 4 bars if empty
+            let maxEnd = 64;
 
             if (playlistClips.length > 0) {
                 minStart = Math.min(...playlistClips.map(c => c.blockIndex * sequenceLength));
@@ -131,16 +122,11 @@ class AudioEngine {
                 maxEnd = Math.max(...endPoints);
             }
 
-            // Loop Logic - Only loop if NOT exporting
             if (!this.isExporting && currentStep >= maxEnd) {
-                // Loop back to start
                 setCurrentStep(minStart);
-                // Also reset Tone transport position if needed for sycronization, though we are driving steps manually
-                // But since we are inside the callback, we just set the next step state.
                 return;
             }
 
-            // Keep master effects in sync with store
             this.updateMasterEffects();
 
             channels.forEach(channel => {
@@ -148,14 +134,11 @@ class AudioEngine {
                 nodes.volume.volume.value = Tone.gainToDb(channel.volume * (channel.mute ? 0 : 1));
                 nodes.panner.pan.value = channel.pan;
 
-                // Load sample if URL is provided and not already loaded for this channel
                 if (channel.sampleUrl && !this.samplers.has(channel.id)) {
-                    // Marker to prevent multiple concurrent loads
                     this.samplers.set(channel.id, { loading: true });
                     this.loadSample(channel.id, channel.sampleUrl);
                 }
 
-                // Check if there is a clip active for this channel at this step
                 const activeClip = playlistClips.find(clip =>
                     clip.channelId === channel.id &&
                     currentStep >= clip.blockIndex * sequenceLength &&
@@ -165,12 +148,10 @@ class AudioEngine {
                 if (activeClip && !channel.mute) {
                     const stepInPattern = (currentStep - activeClip.blockIndex * sequenceLength) % sequenceLength;
 
-                    // Play Step Sequencer
                     if (channel.steps[stepInPattern]) {
                         this.triggerSound(channel, 'C3', time);
                     }
 
-                    // Play Piano Roll Notes
                     if (channel.notes) {
                         const notesAtThisTime = channel.notes.filter(n => n.time === stepInPattern);
                         notesAtThisTime.forEach(note => {
@@ -203,10 +184,8 @@ class AudioEngine {
         const sampler = this.samplers.get(channel.id);
         const name = channel.name.toLowerCase();
 
-        // Pitch correction for Kicks to sound deep
         const p = (pitch === 'C3' && name === 'kick') ? 'C1' : pitch;
 
-        // Convert numeric duration (steps) to Tone.js duration
         const d = typeof duration === 'number' ? { '16n': duration } : duration;
 
         if (sampler && sampler.loaded) {
@@ -215,7 +194,6 @@ class AudioEngine {
             const synth = this.synths.get(channel.id);
             if (synth) {
                 if (name === 'snare' || name === 'clap') {
-                    // Reverting to triggerAttack for snappier transients as requested
                     synth.triggerAttack(time);
                 } else {
                     synth.triggerAttackRelease(p, d, time);
@@ -228,7 +206,6 @@ class AudioEngine {
         return new Promise((resolve) => {
             const nodes = this.getOrCreateChannelNodes(channelId, 'sampler');
 
-            // Dispose old sampler if it exists
             if (this.samplers.has(channelId)) {
                 const old = this.samplers.get(channelId);
                 if (old && typeof old.dispose === 'function') old.dispose();
@@ -252,21 +229,18 @@ class AudioEngine {
     }
 
     disposeChannel(channelId) {
-        // Dispose Sampler
         if (this.samplers.has(channelId)) {
             const sampler = this.samplers.get(channelId);
             if (sampler && typeof sampler.dispose === 'function') sampler.dispose();
             this.samplers.delete(channelId);
         }
 
-        // Dispose Synth
         if (this.synths.has(channelId)) {
             const synth = this.synths.get(channelId);
             if (synth) synth.dispose();
             this.synths.delete(channelId);
         }
 
-        // Dispose Channel Nodes (Volume, Panner)
         if (this.channelNodes.has(channelId)) {
             const nodes = this.channelNodes.get(channelId);
             if (nodes.panner) nodes.panner.dispose();

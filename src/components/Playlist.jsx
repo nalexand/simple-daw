@@ -94,7 +94,7 @@ const Playlist = () => {
 
             <div style={{ flex: 1, display: 'flex', position: 'relative', overflow: 'auto' }}>
                 {/* Track Headers */}
-                <div style={{ width: '80px', flexShrink: 0, background: '#1a1a1a', borderRight: '1px solid #333', position: 'sticky', left: 0, zIndex: 100 }}>
+                <div style={{ width: '80px', flexShrink: 0, overflow: 'hidden', background: '#1a1a1a', borderRight: '1px solid #333', position: 'sticky', left: 0, zIndex: 100 }}>
                     <div style={{ height: '24px', background: '#222', borderBottom: '1px solid #333' }} /> {/* Ruler header spacer */}
                     {channels.map((ch, i) => (
                         <div key={ch.id} style={{

@@ -14,7 +14,8 @@ const MixerStrip = ({ channel }) => {
             padding: '10px 5px',
             background: 'var(--bg-element)',
             borderRight: '1px solid var(--border)',
-            height: '100%'
+            height: '100%',
+            textWrap: 'nowrap'
         }}>
             <div style={{
                 fontSize: '10px',
@@ -86,7 +87,7 @@ const MixerStrip = ({ channel }) => {
             </div>
 
             <div style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-dim)' }}>
-                {channel.id}
+                -
             </div>
         </div>
     );

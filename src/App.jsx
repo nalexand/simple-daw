@@ -136,15 +136,6 @@ const App = () => {
                     ))}
                   </div>
                 )}
-
-                <div style={{ marginTop: '20px', padding: '10px', borderTop: '1px solid var(--border)' }}>
-                  <div style={{ marginBottom: '10px', color: 'var(--text-main)' }}>Browser</div>
-                  <div style={{ paddingLeft: '10px' }}>
-                    <div>📁 Packs</div>
-                    <div style={{ paddingLeft: '15px' }}>📁 Drums</div>
-                    <div style={{ paddingLeft: '15px' }}>📁 Instruments</div>
-                  </div>
-                </div>
               </div>
 
               {/* Mixer in Sidebar */}
