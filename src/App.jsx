@@ -35,6 +35,26 @@ const App = () => {
     }
   }, []);
 
+  const fileInputRef = React.useRef(null);
+
+  const handleFileLoad = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const project = JSON.parse(event.target.result);
+        loadProject(project);
+      } catch (err) {
+        console.error("Failed to parse project file:", err);
+        alert("Invalid project file.");
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = null; // Reset input
+  };
+
   const handleSave = () => {
     const name = prompt("Enter project name:", `Project ${projects.length + 1}`);
     if (name) saveProject(name);
@@ -60,6 +80,14 @@ const App = () => {
             ) : (
               <>
                 <button className="btn" title="Save Project" onClick={handleSave}><Save size={16} /></button>
+                <button className="btn" title="Load Project File" onClick={() => fileInputRef.current.click()}><FolderOpen size={16} /></button>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileLoad}
+                  accept=".json"
+                  style={{ display: 'none' }}
+                />
                 <div style={{ width: '1px', background: 'var(--border)', margin: '0 5px' }} />
                 <button className="btn" title="Export WAV" onClick={() => audioEngine.exportToWav()}><Download size={16} /></button>
                 <button className="btn" onClick={() => setIsCollapsed(true)} style={{ marginLeft: 'auto' }}><ChevronLeft size={16} /></button>

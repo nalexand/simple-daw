@@ -180,7 +180,7 @@ const Playlist = () => {
                                                 zIndex: draggingClip?.clip.id === clip.id ? 100 : 1
                                             }}
                                         >
-                                            Pattern
+
                                         </div>
                                     ))}
                             </div>
