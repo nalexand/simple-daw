@@ -141,72 +141,89 @@ const ChannelRow = ({ channel }) => {
                     <h4 style={{ margin: '0 0 12px 0', fontSize: '13px', color: 'var(--primary)', borderBottom: '1px solid #333', paddingBottom: '8px' }}>Channel Settings: {channel.name}</h4>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                        {/* Root Note */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <label style={{ fontSize: '12px', color: '#aaa' }}>Root Note</label>
-                            <div style={{ display: 'flex', gap: '5px', width: '60%' }}>
-                                <select
-                                    value={channel.rootNote || 'C3'}
-                                    onChange={(e) => updateChannel(channel.id, { rootNote: e.target.value })}
-                                    style={{ background: '#111', border: '1px solid #333', color: 'white', fontSize: '11px', padding: '4px', flex: 1 }}
-                                >
-                                    {/* Generate C0 to B8 */}
-                                    {['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'].map(note =>
-                                        [0, 1, 2, 3, 4, 5, 6, 7, 8].map(octave => {
-                                            const noteName = `${note}${octave}`;
-                                            return <option key={noteName} value={noteName}>{noteName} {noteName === 'C3' ? '(Default)' : ''}</option>;
-                                        })
-                                    )}
-                                </select>
-                                <button
-                                    title="Auto-Detect Pitch (Coming Soon)"
-                                    onClick={() => alert("Auto-Detect Pitch is coming soon!")}
-                                    style={{ background: 'transparent', border: '1px solid #333', color: '#666', cursor: 'pointer', padding: '0 5px', fontSize: '10px' }}
-                                >
-                                    Auto
-                                </button>
-                            </div>
-                        </div>
+                        {channel.type === 'sampler' ? (
+                            <>
+                                {/* Root Note */}
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <label style={{ fontSize: '12px', color: '#aaa' }}>Root Note</label>
+                                    <div style={{ display: 'flex', gap: '5px', width: '60%' }}>
+                                        <select
+                                            value={channel.rootNote || 'C3'}
+                                            onChange={(e) => updateChannel(channel.id, { rootNote: e.target.value })}
+                                            style={{ background: '#111', border: '1px solid #333', color: 'white', fontSize: '11px', padding: '4px', flex: 1 }}
+                                        >
+                                            {/* Generate C0 to B8 */}
+                                            {['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'].map(note =>
+                                                [0, 1, 2, 3, 4, 5, 6, 7, 8].map(octave => {
+                                                    const noteName = `${note}${octave}`;
+                                                    return <option key={noteName} value={noteName}>{noteName} {noteName === 'C3' ? '(Default)' : ''}</option>;
+                                                })
+                                            )}
+                                        </select>
+                                        <button
+                                            title="Auto-Detect Pitch"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                const detected = audioEngine.detectPitch(channel.id);
+                                                if (detected) {
+                                                    updateChannel(channel.id, { rootNote: detected });
+                                                } else {
+                                                    alert("Could not detect pitch for this sample or it's still loading.");
+                                                }
+                                            }}
+                                            className="btn"
+                                            style={{ padding: '0 8px', fontSize: '10px', height: '24px', background: 'rgba(255,140,0,0.1)', borderColor: 'var(--primary)', color: 'var(--primary)' }}
+                                        >
+                                            Auto
+                                        </button>
+                                    </div>
+                                </div>
 
-                        {/* Trim Start */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                <label style={{ fontSize: '12px', color: '#aaa' }}>Trim Start (Offset)</label>
-                                <span style={{ fontSize: '10px', color: '#666' }}>{(channel.trimStart || 0).toFixed(2)}s</span>
-                            </div>
-                            <input
-                                type="range"
-                                min="0" max="2" step="0.01"
-                                value={channel.trimStart || 0}
-                                onChange={(e) => {
-                                    const val = parseFloat(e.target.value);
-                                    updateChannel(channel.id, { trimStart: val });
-                                    // Live update audio engine
-                                    audioEngine.refreshChannelSettings({ ...channel, trimStart: val });
-                                }}
-                                style={{ width: '100%', accentColor: 'var(--primary)' }}
-                            />
-                        </div>
+                                {/* Trim Start */}
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                        <label style={{ fontSize: '12px', color: '#aaa' }}>Trim Start (Offset)</label>
+                                        <span style={{ fontSize: '10px', color: '#666' }}>{(channel.trimStart || 0).toFixed(2)}s</span>
+                                    </div>
+                                    <input
+                                        type="range"
+                                        min="0" max="2" step="0.01"
+                                        value={channel.trimStart || 0}
+                                        onChange={(e) => {
+                                            const val = parseFloat(e.target.value);
+                                            updateChannel(channel.id, { trimStart: val });
+                                            // Live update audio engine
+                                            audioEngine.refreshChannelSettings({ ...channel, trimStart: val });
+                                        }}
+                                        style={{ width: '100%', accentColor: 'var(--primary)' }}
+                                    />
+                                </div>
 
-                        {/* Trim End */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                <label style={{ fontSize: '12px', color: '#aaa' }}>Trim End</label>
-                                <span style={{ fontSize: '10px', color: '#666' }}>{(channel.trimEnd || 0).toFixed(2)}s</span>
+                                {/* Trim End */}
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                        <label style={{ fontSize: '12px', color: '#aaa' }}>Trim End</label>
+                                        <span style={{ fontSize: '10px', color: '#666' }}>{(channel.trimEnd || 0).toFixed(2)}s</span>
+                                    </div>
+                                    <input
+                                        type="range"
+                                        min="0" max="2" step="0.01"
+                                        value={channel.trimEnd || 0}
+                                        onChange={(e) => {
+                                            const val = parseFloat(e.target.value);
+                                            updateChannel(channel.id, { trimEnd: val });
+                                            // Live update audio engine
+                                            audioEngine.refreshChannelSettings({ ...channel, trimEnd: val });
+                                        }}
+                                        style={{ width: '100%', accentColor: 'var(--primary)' }}
+                                    />
+                                </div>
+                            </>
+                        ) : (
+                            <div style={{ padding: '20px', textAlign: 'center', color: '#666', fontSize: '11px' }}>
+                                This channel uses a Synthesizer. Sample settings are not available.
                             </div>
-                            <input
-                                type="range"
-                                min="0" max="2" step="0.01"
-                                value={channel.trimEnd || 0}
-                                onChange={(e) => {
-                                    const val = parseFloat(e.target.value);
-                                    updateChannel(channel.id, { trimEnd: val });
-                                    // Live update audio engine
-                                    audioEngine.refreshChannelSettings({ ...channel, trimEnd: val });
-                                }}
-                                style={{ width: '100%', accentColor: 'var(--primary)' }}
-                            />
-                        </div>
+                        )}
 
                         <div style={{ borderTop: '1px solid #333', margin: '8px 0' }}></div>
 

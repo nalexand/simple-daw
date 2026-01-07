@@ -7,14 +7,22 @@ import Playlist from './components/Playlist';
 import SoundSearchModal from './components/SoundSearchModal';
 import { useAppStore } from './store/useAppStore';
 import { audioEngine } from './audio/AudioEngine';
-import { Layers, ListMusic, Settings2, Activity, ChevronLeft, ChevronRight, Save, FolderOpen, Download, Trash2 } from 'lucide-react';
+import { Layers, ListMusic, Settings2, Sliders, Activity, ChevronLeft, ChevronRight, Save, FolderOpen, Download, Trash2, Play } from 'lucide-react';
 
 const App = () => {
-  const { selectedChannelId, saveProject, loadProject, projects, deleteProject, savedSounds, removeSoundFromLibrary, addChannel } = useAppStore();
+  const { selectedChannelId, saveProject, loadProject, projects, deleteProject, savedSounds, removeSoundFromLibrary, addChannel, isMixerOpen, setMixerOpen } = useAppStore();
   const [browserWidth, setBrowserWidth] = React.useState(250);
   const [isCollapsed, setIsCollapsed] = React.useState(false);
   const [sidebarTab, setSidebarTab] = React.useState('projects'); // 'projects' | 'sounds'
   const isResizing = React.useRef(false);
+
+  React.useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isMixerOpen]);
 
   const startResizing = React.useCallback((e) => {
     isResizing.current = true;
@@ -180,9 +188,35 @@ const App = () => {
                             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#2a2a2a'}
                             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                           >
-                            <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-                              <span style={{ fontSize: '12px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.name}</span>
-                              <span style={{ fontSize: '10px', color: '#666' }}>{s.username}</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  audioEngine.previewSample(s.previews?.['preview-hq-ogg'] || s.url);
+                                }}
+                                style={{
+                                  background: 'none',
+                                  border: 'none',
+                                  padding: '4px',
+                                  color: 'var(--text-dim)',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  borderRadius: '50%',
+                                  backgroundColor: 'rgba(255,255,255,0.05)'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.color = 'var(--primary)'}
+                                onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-dim)'}
+                                title="Preview Sound"
+                              >
+                                <Play size={12} fill="currentColor" />
+                              </button>
+
+                              <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                                <span style={{ fontSize: '12px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.name}</span>
+                                <span style={{ fontSize: '10px', color: '#666' }}>{s.username}</span>
+                              </div>
                             </div>
                             <Trash2
                               size={12}
@@ -201,10 +235,6 @@ const App = () => {
                 )}
               </div>
 
-              {/* Mixer in Sidebar */}
-              <div style={{ borderTop: '1px solid var(--border)', height: '368px', background: '#111' }}>
-                <Mixer />
-              </div>
             </div>
           )}
         </div>
@@ -242,6 +272,51 @@ const App = () => {
         </div>
       </div>
       <SoundSearchModal />
+
+      {/* Mixer Modal */}
+      {
+        isMixerOpen && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100vw',
+            height: '100vh',
+            backgroundColor: 'rgba(0,0,0,0.7)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 1000,
+            backdropFilter: 'blur(4px)'
+          }} onClick={() => setMixerOpen(false)}>
+            <div
+              style={{
+                width: '80%',
+                maxWidth: '1000px',
+                maxHeight: '80vh',
+                background: '#111',
+                borderRadius: '8px',
+                border: '2px solid var(--border)',
+                display: 'flex',
+                flexDirection: 'column',
+                boxShadow: '0 20px 50px rgba(0,0,0,0.5)',
+                overflow: 'hidden'
+              }}
+              onClick={e => e.stopPropagation()}
+            >
+              <div style={{ padding: '10px 15px', background: '#222', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h3 style={{ fontSize: '13px', color: 'var(--primary)', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Sliders size={16} /> MIXER
+                </h3>
+                <button className="btn" onClick={() => setMixerOpen(false)} style={{ padding: '4px 8px', minWidth: 0, height: 'auto' }}>✕</button>
+              </div>
+              <div style={{ flex: 1, overflow: 'auto', padding: '10px', height: '400px', minHeight: '400px', display: 'flex' }}>
+                <Mixer />
+              </div>
+            </div>
+          </div>
+        )
+      }
     </>
   );
 }

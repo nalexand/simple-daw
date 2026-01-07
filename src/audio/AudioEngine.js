@@ -15,12 +15,14 @@ class AudioEngine {
         this.widener.start();
 
         this.masterBus = new Tone.Volume(0).connect(this.widener);
-
         this.polySynth = new Tone.PolySynth(Tone.Synth).connect(this.masterBus);
 
         this.isExporting = false;
         this.recorder = new Tone.Recorder();
         Tone.getDestination().connect(this.recorder);
+
+        // Global preview player for library
+        this.previewSampler = new Tone.Sampler().toDestination();
     }
 
     async exportToWav() {
@@ -241,7 +243,6 @@ class AudioEngine {
             let finalDuration;
             if (typeof duration === 'number') {
                 // Duration is in steps (16th notes)
-                // Convert steps to seconds: Tone.Time('16n').toSeconds() * duration
                 finalDuration = Tone.Time('16n').toSeconds() * duration;
             } else {
                 finalDuration = duration; // '16n' or other string
@@ -297,7 +298,31 @@ class AudioEngine {
         }
     }
 
-    // Duplicate loadSample removed associated with AudioEngine.js:278
+    async previewSample(url) {
+        if (!this.initialized) await this.init();
+
+        // Dispose old preview if any to prevent overlap/leak
+        if (this.previewSampler) {
+            try {
+                this.previewSampler.dispose();
+            } catch (e) { }
+        }
+
+        return new Promise((resolve) => {
+            this.previewSampler = new Tone.Sampler({
+                urls: { C3: url },
+                onload: () => {
+                    this.previewSampler.toDestination();
+                    this.previewSampler.triggerAttackRelease('C3', '1n');
+                    resolve();
+                },
+                onerror: () => {
+                    console.warn("Preview load failed:", url);
+                    resolve();
+                }
+            });
+        });
+    }
 
     // Call this when Trim settings change
     refreshChannelSettings(channel) {
@@ -324,6 +349,49 @@ class AudioEngine {
                 // Reset to full buffer
                 sampler.add('C3', rawBuffer);
             }
+        }
+    }
+
+    detectPitch(channelId) {
+        const buffer = this.rawBuffers?.get(channelId);
+        if (!buffer || !buffer.loaded) return null;
+
+        const floatData = buffer.toArray(0); // Use first channel
+        const sampleRate = buffer.sampleRate;
+
+        // We need a decent window. 4096 is good for low frequencies.
+        const fftSize = 4096;
+        const startOffset = Math.floor(Math.min(sampleRate * 0.1, floatData.length * 0.1)); // Skip initial silence/attack
+        const data = floatData.slice(startOffset, startOffset + fftSize);
+
+        if (data.length < fftSize) return null;
+
+        // Perform Autocorrelation
+        let bestR = -1;
+        let bestLag = -1;
+
+        // Search lags between 30Hz and 2000Hz
+        const minLag = Math.floor(sampleRate / 2000);
+        const maxLag = Math.floor(sampleRate / 30);
+
+        for (let lag = minLag; lag < maxLag; lag++) {
+            let r = 0;
+            for (let i = 0; i < fftSize - lag; i++) {
+                r += data[i] * data[i + lag];
+            }
+            if (r > bestR) {
+                bestR = r;
+                bestLag = lag;
+            }
+        }
+
+        if (bestLag === -1 || bestR < 5) return null; // 5 is a noise threshold
+
+        const freq = sampleRate / bestLag;
+        try {
+            return Tone.Frequency(freq).toNote();
+        } catch (e) {
+            return null;
         }
     }
 

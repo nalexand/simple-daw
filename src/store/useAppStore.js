@@ -19,6 +19,7 @@ export const useAppStore = create((set) => ({
     masterReverb: 0.0,
     masterWidth: 0.0,
     sequenceLength: 16,
+    isMixerOpen: false,
     setSequenceLength: (length) => set({ sequenceLength: length }),
     channels: [
 
@@ -103,6 +104,7 @@ export const useAppStore = create((set) => ({
     })),
     isSoundSearchOpen: false,
     setSoundSearchOpen: (open) => set({ isSoundSearchOpen: open }),
+    setMixerOpen: (open) => set({ isMixerOpen: open }),
 
     // Project Management
     projects: getSavedProjects(),

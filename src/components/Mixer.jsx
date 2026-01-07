@@ -15,18 +15,18 @@ const MixerStrip = ({ channel }) => {
             background: 'var(--bg-element)',
             borderRight: '1px solid var(--border)',
             height: '100%',
-            textWrap: 'nowrap'
+            whiteSpace: 'nowrap'
         }}>
             <div style={{
                 fontSize: '10px',
                 color: 'var(--text-dim)',
                 textAlign: 'center',
                 height: '30px',
-                borderTop: `3px solid ${channel.color}`,
+                borderTop: `3px solid ${channel.color || 'var(--primary)'}`,
                 width: '100%',
                 paddingTop: '5px'
             }}>
-                {channel.name.toUpperCase()}
+                {channel.name?.toUpperCase() || 'SYNTH'}
             </div>
 
             {/* Pan Knob (Simplified as slider for now) */}
@@ -56,7 +56,6 @@ const MixerStrip = ({ channel }) => {
                     min="0"
                     max="1"
                     step="0.01"
-                    orient="vertical"
                     className="vertical-slider"
                     value={channel.volume}
                     onChange={(e) => updateChannel(channel.id, { volume: parseFloat(e.target.value) })}
@@ -104,9 +103,9 @@ const Mixer = () => {
             <div style={{ padding: '10px 20px', borderBottom: '1px solid var(--border)', fontSize: '12px', color: 'var(--text-dim)' }}>
                 MIXER
             </div>
-            <div style={{ flex: 1, display: 'flex', overflowX: 'auto', background: '#181818' }}>
-                {channels.map(ch => (
-                    <MixerStrip key={ch.id} channel={ch} />
+            <div style={{ flex: 1, display: 'flex', overflowX: 'auto', background: '#181818', minHeight: '350px' }}>
+                {(channels || []).map(ch => (
+                    <MixerStrip key={ch?.id || Math.random()} channel={ch} />
                 ))}
 
                 {/* Master track */}
@@ -149,7 +148,6 @@ const Mixer = () => {
                         <input
                             type="range"
                             min="0" max="1.2" step="0.01"
-                            orient="vertical"
                             className="vertical-slider"
                             value={masterVolume}
                             onChange={(e) => set({ masterVolume: parseFloat(e.target.value) })}

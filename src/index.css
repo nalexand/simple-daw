@@ -116,8 +116,8 @@ body {
 
 .vertical-slider {
   writing-mode: bt-lr;
-  /* IE */
   appearance: slider-vertical;
+  -webkit-appearance: slider-vertical;
   width: 12px;
   height: 150px;
   background: var(--bg-dark);
@@ -135,7 +135,15 @@ body {
 }
 
 @keyframes blink {
-  0% { opacity: 1; }
-  50% { opacity: 0.3; }
-  100% { opacity: 1; }
+  0% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.3;
+  }
+
+  100% {
+    opacity: 1;
+  }
 }
