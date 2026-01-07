@@ -10,6 +10,16 @@ const Transport = () => {
         audioEngine.setBpm(bpm);
     }, [bpm]);
 
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.repeat) return;
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, []);
+
     const handleTogglePlay = async () => {
         if (!audioEngine.initialized) {
             await audioEngine.init();
@@ -36,7 +46,12 @@ const Transport = () => {
                     {isPlaying ? <Square size={16} fill="white" /> : <Play size={16} fill="currentColor" />}
                 </button>
                 <button
-                    className={`btn ${useAppStore(s => s.isRecording) ? 'danger' : ''}`}
+                    className={`btn`}
+                    style={{
+                        backgroundColor: useAppStore(s => s.isRecording) ? '#ff3d3d' : '',
+                        color: useAppStore(s => s.isRecording) ? 'white' : 'currentColor',
+                        borderColor: useAppStore(s => s.isRecording) ? '#ff3d3d' : ''
+                    }}
                     onClick={() => useAppStore.getState().setIsRecording(!useAppStore.getState().isRecording)}
                     title="Toggle Recording (R)"
                 >

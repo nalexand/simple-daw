@@ -194,5 +194,8 @@ export const useAppStore = create((set) => ({
         const updatedProjects = useAppStore.getState().projects.filter(p => p.id !== projectId);
         set({ projects: updatedProjects });
         localStorage.setItem('fl_studio_projects_list', JSON.stringify(updatedProjects));
-    }
+    },
+    clearChannelNotes: (channelId) => set((state) => ({
+        channels: state.channels.map(ch => ch.id === channelId ? { ...ch, notes: [] } : ch)
+    }))
 }));

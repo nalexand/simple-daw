@@ -69,6 +69,8 @@ const PianoRoll = ({ activeChannelId }) => {
 
             const newNote = { pitch, time: startTime, duration };
 
+            console.log(`[Recording] Added note: ${pitch} at step ${startTime} (dur: ${duration})`);
+
             const freshChannel = useAppStore.getState().channels.find(c => c.id === activeChannelId);
             if (freshChannel) {
                 updateChannel(activeChannelId, { notes: [...freshChannel.notes, newNote] });
@@ -142,9 +144,8 @@ const PianoRoll = ({ activeChannelId }) => {
         } else {
             // Toggle on + Start Drag
             // Play preview
-            import('../audio/AudioEngine').then(mod => {
-                mod.audioEngine.triggerSound(activeChannel, pitch);
-            });
+            audioEngine.triggerSound(activeChannel, pitch);
+
             const newNote = { pitch, time: Number(time), duration: 1 };
             updateChannel(activeChannelId, { notes: [...activeChannel.notes, newNote] });
             setDragNote({ pitch, time: Number(time) });
@@ -173,8 +174,18 @@ const PianoRoll = ({ activeChannelId }) => {
     return (
         <div className="panel" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', userSelect: 'none' }}>
             <div style={{ padding: '10px', borderBottom: '1px solid var(--border)', fontSize: '11px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontWeight: 'bold', color: 'var(--text)' }}>PIANO ROLL: {activeChannel.name}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span style={{ fontWeight: 'bold', color: 'var(--text)' }}>PIANO ROLL: {activeChannel.name}</span>
+                    <button
+                        className="btn"
+                        onClick={() => useAppStore.getState().clearChannelNotes(activeChannelId)}
+                        style={{ padding: '2px 8px', fontSize: '10px', height: 'auto', backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }}
+                    >
+                        Clear Notes
+                    </button>
+                </div>
                 <div style={{ display: 'flex', gap: '15px', color: 'var(--text-dim)' }}>
+                    {isRecording && <span style={{ color: '#ff3d3d', fontWeight: 'bold', animation: 'blink 1s infinite' }}>● RECORDING</span>}
                     <span>Notes: {activeChannel.notes.length}</span>
                     <span>1/16 Grid</span>
                 </div>
