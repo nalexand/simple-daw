@@ -10,9 +10,10 @@ import { audioEngine } from './audio/AudioEngine';
 import { Layers, ListMusic, Settings2, Activity, ChevronLeft, ChevronRight, Save, FolderOpen, Download, Trash2 } from 'lucide-react';
 
 const App = () => {
-  const { selectedChannelId, saveProject, loadProject, projects, deleteProject } = useAppStore();
-  const [browserWidth, setBrowserWidth] = React.useState(250); // Smaller default for file list
+  const { selectedChannelId, saveProject, loadProject, projects, deleteProject, savedSounds, removeSoundFromLibrary, addChannel } = useAppStore();
+  const [browserWidth, setBrowserWidth] = React.useState(250);
   const [isCollapsed, setIsCollapsed] = React.useState(false);
+  const [sidebarTab, setSidebarTab] = React.useState('projects'); // 'projects' | 'sounds'
   const isResizing = React.useRef(false);
 
   const startResizing = React.useCallback((e) => {
@@ -97,44 +98,106 @@ const App = () => {
 
           {!isCollapsed && (
             <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
-              <div style={{ padding: '20px', color: 'var(--text-dim)', fontSize: '12px', flex: 1, overflowY: 'auto' }}>
-                <div style={{ marginBottom: '10px', color: 'var(--text-main)', fontSize: '13px', fontWeight: 'bold' }}>PROJECTS</div>
-                {projects.length === 0 ? (
-                  <div style={{ fontStyle: 'italic' }}>No saved projects</div>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                    {projects.map(p => (
-                      <div
-                        key={p.id}
-                        style={{
-                          padding: '6px 8px',
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          cursor: 'pointer',
-                          borderRadius: '4px'
-                        }}
-                        className="menu-item-hover"
-                        onClick={() => loadProject(p)}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#2a2a2a'}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                      >
-                        <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-                          <span style={{ fontSize: '12px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</span>
-                          <span style={{ fontSize: '10px', color: '#666' }}>{new Date(p.date).toLocaleDateString()}</span>
-                        </div>
-                        <Trash2
-                          size={12}
-                          color="#666"
-                          style={{ flexShrink: 0 }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (confirm(`Delete "${p.name}"?`)) deleteProject(p.id);
-                          }}
-                        />
+
+              {/* Sidebar Tabs */}
+              <div style={{ display: 'flex', background: '#222', borderBottom: '1px solid var(--border)' }}>
+                <button
+                  onClick={() => setSidebarTab('projects')}
+                  style={{ flex: 1, padding: '8px', background: sidebarTab === 'projects' ? 'var(--bg-main)' : 'transparent', border: 'none', color: sidebarTab === 'projects' ? 'var(--primary)' : 'var(--text-dim)', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>
+                  PROJECTS
+                </button>
+                <button
+                  onClick={() => setSidebarTab('sounds')}
+                  style={{ flex: 1, padding: '8px', background: sidebarTab === 'sounds' ? 'var(--bg-main)' : 'transparent', border: 'none', color: sidebarTab === 'sounds' ? 'var(--primary)' : 'var(--text-dim)', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>
+                  SAVED SOUNDS
+                </button>
+              </div>
+
+              <div style={{ padding: '10px', color: 'var(--text-dim)', fontSize: '12px', flex: 1, overflowY: 'auto' }}>
+
+                {sidebarTab === 'projects' && (
+                  <>
+                    {projects.length === 0 ? (
+                      <div style={{ fontStyle: 'italic', padding: '10px' }}>No saved projects</div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                        {projects.map(p => (
+                          <div
+                            key={p.id}
+                            style={{
+                              padding: '6px 8px',
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              cursor: 'pointer',
+                              borderRadius: '4px'
+                            }}
+                            className="menu-item-hover"
+                            onClick={() => loadProject(p)}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#2a2a2a'}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                          >
+                            <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                              <span style={{ fontSize: '12px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</span>
+                              <span style={{ fontSize: '10px', color: '#666' }}>{new Date(p.date).toLocaleDateString()}</span>
+                            </div>
+                            <Trash2
+                              size={12}
+                              color="#666"
+                              style={{ flexShrink: 0 }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (confirm(`Delete "${p.name}"?`)) deleteProject(p.id);
+                              }}
+                            />
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
+                    )}
+                  </>
+                )}
+
+                {sidebarTab === 'sounds' && (
+                  <>
+                    {savedSounds.length === 0 ? (
+                      <div style={{ fontStyle: 'italic', padding: '10px' }}>No saved sounds</div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                        {savedSounds.map(s => (
+                          <div
+                            key={s.id}
+                            style={{
+                              padding: '6px 8px',
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              cursor: 'pointer',
+                              borderRadius: '4px'
+                            }}
+                            className="menu-item-hover"
+                            title="Click to add to channel rack"
+                            onClick={() => addChannel(s.name, 'sampler', s.previews?.['preview-hq-ogg'] || s.url)}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#2a2a2a'}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                          >
+                            <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                              <span style={{ fontSize: '12px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.name}</span>
+                              <span style={{ fontSize: '10px', color: '#666' }}>{s.username}</span>
+                            </div>
+                            <Trash2
+                              size={12}
+                              color="#666"
+                              style={{ flexShrink: 0 }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (confirm(`Remove "${s.name}" from library?`)) removeSoundFromLibrary(s.id);
+                              }}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
 

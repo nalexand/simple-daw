@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAppStore } from '../store/useAppStore';
-import { Volume2, Music, Trash2 } from 'lucide-react';
+import { Volume2, Music, Trash2, Settings2, Save } from 'lucide-react';
 import { audioEngine } from '../audio/AudioEngine';
 
 const Step = ({ active, current, onClick }) => (
@@ -24,8 +24,20 @@ const Step = ({ active, current, onClick }) => (
 );
 
 const ChannelRow = ({ channel }) => {
-    const { toggleStep, currentStep, selectedChannelId, setSelectedChannelId, deleteChannel, sequenceLength } = useAppStore();
+    const { toggleStep, currentStep, selectedChannelId, setSelectedChannelId, deleteChannel, sequenceLength, updateChannel, saveSoundToLibrary } = useAppStore();
     const isActive = selectedChannelId === channel.id;
+    const [showSettings, setShowSettings] = React.useState(false);
+
+    // Close settings when clicking outside
+    React.useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (showSettings && !e.target.closest('.channel-settings-popover') && !e.target.closest('.settings-btn')) {
+                setShowSettings(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [showSettings]);
 
     return (
         <div
@@ -38,12 +50,13 @@ const ChannelRow = ({ channel }) => {
                 backgroundColor: isActive ? 'rgba(255,140,0,0.1)' : 'transparent',
                 width: 'max-content',
                 minWidth: '100%',
-                boxSizing: 'border-box'
+                boxSizing: 'border-box',
+                position: 'relative'
             }}
         >
             {/* Sticky Track Info */}
             <div style={{
-                width: '200px',
+                width: '240px',
                 flexShrink: 0,
                 display: 'flex',
                 alignItems: 'center',
@@ -66,6 +79,19 @@ const ChannelRow = ({ channel }) => {
                     textOverflow: 'ellipsis',
                     flex: 1
                 }}>{channel.name}</span>
+
+                {/* Settings Button */}
+                <button
+                    className="btn-icon settings-btn"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        setShowSettings(!showSettings);
+                    }}
+                    style={{ color: 'var(--text-dim)', padding: '4px' }}
+                    title="Channel Settings"
+                >
+                    <Settings2 size={14} />
+                </button>
 
                 <button
                     className="btn-icon"
@@ -93,9 +119,115 @@ const ChannelRow = ({ channel }) => {
                     onMouseLeave={(e) => e.target.style.color = 'var(--text-dim)'}
                     title="Delete Channel"
                 >
-                    <Trash2 size={16} />
+                    <Trash2 size={14} />
                 </button>
             </div>
+
+            {/* Popover Settings */}
+            {showSettings && (
+                <div className="channel-settings-popover" style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: '20px',
+                    zIndex: 100,
+                    width: '300px',
+                    background: '#252525',
+                    border: '1px solid var(--border)',
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
+                    padding: '16px',
+                    borderRadius: '4px',
+                    cursor: 'default'
+                }} onClick={e => e.stopPropagation()}>
+                    <h4 style={{ margin: '0 0 12px 0', fontSize: '13px', color: 'var(--primary)', borderBottom: '1px solid #333', paddingBottom: '8px' }}>Channel Settings: {channel.name}</h4>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        {/* Root Note */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <label style={{ fontSize: '12px', color: '#aaa' }}>Root Note</label>
+                            <div style={{ display: 'flex', gap: '5px', width: '60%' }}>
+                                <select
+                                    value={channel.rootNote || 'C3'}
+                                    onChange={(e) => updateChannel(channel.id, { rootNote: e.target.value })}
+                                    style={{ background: '#111', border: '1px solid #333', color: 'white', fontSize: '11px', padding: '4px', flex: 1 }}
+                                >
+                                    {/* Generate C0 to B8 */}
+                                    {['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'].map(note =>
+                                        [0, 1, 2, 3, 4, 5, 6, 7, 8].map(octave => {
+                                            const noteName = `${note}${octave}`;
+                                            return <option key={noteName} value={noteName}>{noteName} {noteName === 'C3' ? '(Default)' : ''}</option>;
+                                        })
+                                    )}
+                                </select>
+                                <button
+                                    title="Auto-Detect Pitch (Coming Soon)"
+                                    onClick={() => alert("Auto-Detect Pitch is coming soon!")}
+                                    style={{ background: 'transparent', border: '1px solid #333', color: '#666', cursor: 'pointer', padding: '0 5px', fontSize: '10px' }}
+                                >
+                                    Auto
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Trim Start */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <label style={{ fontSize: '12px', color: '#aaa' }}>Trim Start (Offset)</label>
+                                <span style={{ fontSize: '10px', color: '#666' }}>{(channel.trimStart || 0).toFixed(2)}s</span>
+                            </div>
+                            <input
+                                type="range"
+                                min="0" max="2" step="0.01"
+                                value={channel.trimStart || 0}
+                                onChange={(e) => {
+                                    const val = parseFloat(e.target.value);
+                                    updateChannel(channel.id, { trimStart: val });
+                                    // Live update audio engine
+                                    audioEngine.refreshChannelSettings({ ...channel, trimStart: val });
+                                }}
+                                style={{ width: '100%', accentColor: 'var(--primary)' }}
+                            />
+                        </div>
+
+                        {/* Trim End */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <label style={{ fontSize: '12px', color: '#aaa' }}>Trim End</label>
+                                <span style={{ fontSize: '10px', color: '#666' }}>{(channel.trimEnd || 0).toFixed(2)}s</span>
+                            </div>
+                            <input
+                                type="range"
+                                min="0" max="2" step="0.01"
+                                value={channel.trimEnd || 0}
+                                onChange={(e) => {
+                                    const val = parseFloat(e.target.value);
+                                    updateChannel(channel.id, { trimEnd: val });
+                                    // Live update audio engine
+                                    audioEngine.refreshChannelSettings({ ...channel, trimEnd: val });
+                                }}
+                                style={{ width: '100%', accentColor: 'var(--primary)' }}
+                            />
+                        </div>
+
+                        <div style={{ borderTop: '1px solid #333', margin: '8px 0' }}></div>
+
+                        <button className="btn btn-sm" onClick={() => {
+                            if (channel.sampleUrl) {
+                                saveSoundToLibrary({
+                                    name: channel.name,
+                                    username: 'User',
+                                    url: channel.sampleUrl
+                                });
+                                alert("Channel sound saved to Library!");
+                                setShowSettings(false);
+                            } else {
+                                alert("No sample to save (Synth channels not supported yet for library).");
+                            }
+                        }}>
+                            <Save size={12} style={{ marginRight: '5px' }} /> Save to Library
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* Steps Section */}
             <div style={{

@@ -89,6 +89,10 @@ export const useAppStore = create((set) => ({
             pan: 0,
             mute: false,
             solo: false,
+            // New Properties
+            rootNote: 'C3',
+            trimStart: 0,
+            trimEnd: 0,
             color: channelColor
         };
         return { channels: [...state.channels, newChannel] };
@@ -102,6 +106,31 @@ export const useAppStore = create((set) => ({
 
     // Project Management
     projects: getSavedProjects(),
+
+    // Saved Sounds Library (Global)
+    savedSounds: (() => {
+        try {
+            return JSON.parse(localStorage.getItem('fl_studio_saved_sounds') || '[]');
+        } catch (e) {
+            console.error(e);
+            return [];
+        }
+    })(),
+    isRecording: false,
+    setIsRecording: (isRecording) => set({ isRecording }),
+
+    saveSoundToLibrary: (sound) => set((state) => {
+        const newSound = { ...sound, id: Math.random().toString(36).substr(2, 9), date: new Date().toISOString() };
+        const updated = [newSound, ...state.savedSounds];
+        localStorage.setItem('fl_studio_saved_sounds', JSON.stringify(updated));
+        return { savedSounds: updated };
+    }),
+
+    removeSoundFromLibrary: (id) => set((state) => {
+        const updated = state.savedSounds.filter(s => s.id !== id);
+        localStorage.setItem('fl_studio_saved_sounds', JSON.stringify(updated));
+        return { savedSounds: updated };
+    }),
 
     saveProject: (name) => {
         try {
@@ -143,8 +172,16 @@ export const useAppStore = create((set) => ({
     },
 
     loadProject: (project) => {
+        // Ensure channels have new properties if they are from old save
+        const upgradedChannels = (project.channels || []).map(ch => ({
+            ...ch,
+            rootNote: ch.rootNote || 'C3',
+            trimStart: ch.trimStart || 0,
+            trimEnd: ch.trimEnd || 0
+        }));
+
         set({
-            channels: project.channels,
+            channels: upgradedChannels,
             playlistClips: project.playlistClips,
             bpm: project.bpm,
             sequenceLength: project.sequenceLength || 16,
@@ -157,5 +194,8 @@ export const useAppStore = create((set) => ({
         const updatedProjects = useAppStore.getState().projects.filter(p => p.id !== projectId);
         set({ projects: updatedProjects });
         localStorage.setItem('fl_studio_projects_list', JSON.stringify(updatedProjects));
-    }
+    },
+    clearChannelNotes: (channelId) => set((state) => ({
+        channels: state.channels.map(ch => ch.id === channelId ? { ...ch, notes: [] } : ch)
+    }))
 }));
