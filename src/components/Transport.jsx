@@ -35,6 +35,13 @@ const Transport = () => {
                 >
                     {isPlaying ? <Square size={16} fill="white" /> : <Play size={16} fill="currentColor" />}
                 </button>
+                <button
+                    className={`btn ${useAppStore(s => s.isRecording) ? 'danger' : ''}`}
+                    onClick={() => useAppStore.getState().setIsRecording(!useAppStore.getState().isRecording)}
+                    title="Toggle Recording (R)"
+                >
+                    <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: 'currentColor' }} />
+                </button>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', width: '80px' }}>
