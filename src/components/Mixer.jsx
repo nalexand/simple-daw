@@ -1,5 +1,5 @@
-import React from 'react';
 import { useAppStore } from '../store/useAppStore';
+import { audioEngine } from '../audio/AudioEngine';
 
 const MixerStrip = ({ channel }) => {
     const { updateChannel } = useAppStore();
@@ -37,7 +37,11 @@ const MixerStrip = ({ channel }) => {
                     max="1"
                     step="0.1"
                     value={channel.pan}
-                    onChange={(e) => updateChannel(channel.id, { pan: parseFloat(e.target.value) })}
+                    onChange={(e) => {
+                        const val = parseFloat(e.target.value);
+                        updateChannel(channel.id, { pan: val });
+                        audioEngine.updateChannelSettings({ ...channel, pan: val });
+                    }}
                     style={{ width: '40px', accentColor: 'var(--accent)' }}
                 />
                 <span className="knob-label">PAN</span>
@@ -58,7 +62,11 @@ const MixerStrip = ({ channel }) => {
                     step="0.01"
                     className="vertical-slider"
                     value={channel.volume}
-                    onChange={(e) => updateChannel(channel.id, { volume: parseFloat(e.target.value) })}
+                    onChange={(e) => {
+                        const val = parseFloat(e.target.value);
+                        updateChannel(channel.id, { volume: val });
+                        audioEngine.updateChannelSettings({ ...channel, volume: val });
+                    }}
                     style={{
                         appearance: 'slider-vertical',
                         width: '20px',
@@ -72,14 +80,22 @@ const MixerStrip = ({ channel }) => {
                 <button
                     className="btn"
                     style={{ padding: '2px 6px', fontSize: '10px', color: channel.mute ? 'var(--primary)' : 'inherit' }}
-                    onClick={() => updateChannel(channel.id, { mute: !channel.mute })}
+                    onClick={() => {
+                        const updated = { ...channel, mute: !channel.mute };
+                        updateChannel(channel.id, updated);
+                        audioEngine.updateChannelSettings(updated);
+                    }}
                 >
                     M
                 </button>
                 <button
                     className="btn"
                     style={{ padding: '2px 6px', fontSize: '10px', color: channel.solo ? 'var(--accent)' : 'inherit' }}
-                    onClick={() => updateChannel(channel.id, { solo: !channel.solo })}
+                    onClick={() => {
+                        const updated = { ...channel, solo: !channel.solo };
+                        updateChannel(channel.id, updated);
+                        audioEngine.updateChannelSettings(updated);
+                    }}
                 >
                     S
                 </button>
@@ -128,7 +144,10 @@ const Mixer = () => {
                             <input
                                 type="range" min="0" max="1" step="0.01"
                                 value={masterReverb}
-                                onChange={(e) => set({ masterReverb: parseFloat(e.target.value) })}
+                                onChange={(e) => {
+                                    set({ masterReverb: parseFloat(e.target.value) });
+                                    audioEngine.updateMasterEffects();
+                                }}
                                 style={{ width: '100%', accentColor: 'var(--accent)' }}
                             />
                         </div>
@@ -137,7 +156,10 @@ const Mixer = () => {
                             <input
                                 type="range" min="0" max="1" step="0.01"
                                 value={masterWidth}
-                                onChange={(e) => set({ masterWidth: parseFloat(e.target.value) })}
+                                onChange={(e) => {
+                                    set({ masterWidth: parseFloat(e.target.value) });
+                                    audioEngine.updateMasterEffects();
+                                }}
                                 style={{ width: '100%', accentColor: 'var(--accent)' }}
                             />
                         </div>
@@ -150,7 +172,11 @@ const Mixer = () => {
                             min="0" max="1.2" step="0.01"
                             className="vertical-slider"
                             value={masterVolume}
-                            onChange={(e) => set({ masterVolume: parseFloat(e.target.value) })}
+                            onChange={(e) => {
+                                const val = parseFloat(e.target.value);
+                                set({ masterVolume: val });
+                                audioEngine.updateMasterEffects();
+                            }}
                             style={{
                                 appearance: 'slider-vertical',
                                 height: '200px',

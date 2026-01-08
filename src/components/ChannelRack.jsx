@@ -193,7 +193,7 @@ const ChannelRow = ({ channel }) => {
                                             const val = parseFloat(e.target.value);
                                             updateChannel(channel.id, { trimStart: val });
                                             // Live update audio engine
-                                            audioEngine.refreshChannelSettings({ ...channel, trimStart: val });
+                                            audioEngine.updateChannelSettings({ ...channel, trimStart: val });
                                         }}
                                         style={{ width: '100%', accentColor: 'var(--primary)' }}
                                     />
@@ -213,7 +213,7 @@ const ChannelRow = ({ channel }) => {
                                             const val = parseFloat(e.target.value);
                                             updateChannel(channel.id, { trimEnd: val });
                                             // Live update audio engine
-                                            audioEngine.refreshChannelSettings({ ...channel, trimEnd: val });
+                                            audioEngine.updateChannelSettings({ ...channel, trimEnd: val });
                                         }}
                                         style={{ width: '100%', accentColor: 'var(--primary)' }}
                                     />
