@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Play, Square, Settings, Volume2 } from 'lucide-react';
+import { Play, Square, Settings2, Sliders } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 import { audioEngine } from '../audio/AudioEngine';
 
@@ -56,6 +56,14 @@ const Transport = () => {
                     title="Toggle Recording (R)"
                 >
                     <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: 'currentColor' }} />
+                </button>
+                <button
+                    className={`btn ${useAppStore(s => s.isMixerOpen) ? 'primary' : ''}`}
+                    onClick={() => useAppStore.getState().setMixerOpen(!useAppStore.getState().isMixerOpen)}
+                    title="Toggle Mixer (M)"
+                >
+                    <Sliders size={16} />
+                    <span style={{ fontSize: '11px', fontWeight: 'bold' }}>MIXER</span>
                 </button>
             </div>
 

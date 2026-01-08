@@ -15,10 +15,11 @@ export const useAppStore = create((set) => ({
     bpm: 128,
     currentStep: 0,
     selectedChannelId: '1',
-    masterVolume: 0.8,
+    masterVolume: 1,
     masterReverb: 0.0,
     masterWidth: 0.0,
     sequenceLength: 16,
+    isMixerOpen: false,
     setSequenceLength: (length) => set({ sequenceLength: length }),
     channels: [
 
@@ -85,7 +86,7 @@ export const useAppStore = create((set) => ({
             sampleUrl: sampleUrl || null,
             steps: Array(64).fill(false),
             notes: [],
-            volume: 0.8,
+            volume: 1,
             pan: 0,
             mute: false,
             solo: false,
@@ -103,6 +104,7 @@ export const useAppStore = create((set) => ({
     })),
     isSoundSearchOpen: false,
     setSoundSearchOpen: (open) => set({ isSoundSearchOpen: open }),
+    setMixerOpen: (open) => set({ isMixerOpen: open }),
 
     // Project Management
     projects: getSavedProjects(),

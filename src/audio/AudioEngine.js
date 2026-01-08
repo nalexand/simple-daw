@@ -9,18 +9,20 @@ class AudioEngine {
         this.initialized = false;
 
         this.masterVolume = new Tone.Volume(0).toDestination();
-        this.reverb = new Tone.Freeverb({ roomSize: 0.7, dampening: 3000, wet: 0.2 }).connect(this.masterVolume);
+        this.reverb = new Tone.Freeverb({ roomSize: 0.7, dampening: 3000, wet: 0 }).connect(this.masterVolume);
 
-        this.widener = new Tone.Chorus({ frequency: 1.5, delayTime: 3.5, depth: 0.7, wet: 0.1 }).connect(this.reverb);
+        this.widener = new Tone.Chorus({ frequency: 1.5, delayTime: 3.5, depth: 0.7, wet: 0 }).connect(this.reverb);
         this.widener.start();
 
         this.masterBus = new Tone.Volume(0).connect(this.widener);
-
         this.polySynth = new Tone.PolySynth(Tone.Synth).connect(this.masterBus);
 
         this.isExporting = false;
         this.recorder = new Tone.Recorder();
         Tone.getDestination().connect(this.recorder);
+
+        // Global preview player for library
+        this.previewSampler = new Tone.Sampler().toDestination();
     }
 
     async exportToWav() {
@@ -68,6 +70,10 @@ class AudioEngine {
         return new Promise((resolve) => {
             const nodes = this.getOrCreateChannelNodes(channelId, 'sampler');
 
+            // Sync current channel state from store immediately
+            const channel = useAppStore.getState().channels.find(c => c.id === channelId);
+            if (channel) this.updateChannelSettings(channel);
+
             if (this.samplers.has(channelId)) {
                 const old = this.samplers.get(channelId);
                 // Safety check: ensure dispose exists before calling
@@ -81,7 +87,7 @@ class AudioEngine {
                 urls: { C3: url },
                 release: 1,
                 onload: () => {
-                    sampler.connect(nodes.panner);
+                    sampler.connect(nodes); // nodes is the Tone.Channel instance
                     this.samplers.set(channelId, sampler);
                     resolve();
                 },
@@ -102,14 +108,13 @@ class AudioEngine {
 
     getOrCreateChannelNodes(channelId, channelName) {
         if (!this.channelNodes.has(channelId)) {
-            const volume = new Tone.Volume(0).connect(this.masterBus);
-            const panner = new Tone.Panner(0).connect(volume);
-            this.channelNodes.set(channelId, { volume, panner });
+            // Tone.Channel combines volume, pan, mute, solo and is stereo-native
+            const channelNode = new Tone.Channel().connect(this.masterBus);
+            this.channelNodes.set(channelId, channelNode);
 
             // Create dedicated synth for this channel if not a sampler
             const name = channelName.toLowerCase();
             let synth;
-            // Use PolySynths ONLY for tonal instruments. Drums are Mono for stability (NoiseSynth fails in PolySynth).
             if (name === 'kick') {
                 synth = new Tone.MembraneSynth();
             } else if (name === 'snare') {
@@ -121,10 +126,28 @@ class AudioEngine {
             } else {
                 synth = new Tone.PolySynth(Tone.Synth);
             }
-            synth.connect(panner);
+            synth.connect(channelNode);
             this.synths.set(channelId, synth);
         }
         return this.channelNodes.get(channelId);
+    }
+
+    // New unified update method for Mixer/Settings
+    updateChannelSettings(channel) {
+        const node = this.channelNodes.get(channel.id);
+        if (node) {
+            // volume is in dB. 0.8 -> ~ -2dB. 1.0 -> 0dB.
+            // Using gainToDb for cleaner mapping
+            node.volume.value = Tone.gainToDb(channel.volume ?? 1);
+            node.pan.value = channel.pan ?? 0;
+            node.mute = channel.mute ?? false;
+            node.solo = channel.solo ?? false;
+        }
+
+        // Also refresh buffer-based settings if it's a sampler
+        if (channel.type === 'sampler') {
+            this.refreshChannelSettings(channel);
+        }
     }
 
     updateMasterEffects() {
@@ -140,12 +163,22 @@ class AudioEngine {
         }
     }
 
+    // Bulk sync for project load or init
+    syncAllSettings() {
+        const { channels } = useAppStore.getState();
+        this.updateMasterEffects();
+        channels.forEach(ch => {
+            this.getOrCreateChannelNodes(ch.id, ch.name);
+            this.updateChannelSettings(ch);
+        });
+    }
+
     async init() {
         if (this.initialized) return;
         await Tone.start();
 
         const { channels } = useAppStore.getState();
-        channels.forEach(ch => this.getOrCreateChannelNodes(ch.id, ch.name));
+        this.syncAllSettings();
 
         Tone.getTransport().scheduleRepeat((time) => {
             const { currentStep, setCurrentStep, channels, playlistClips, sequenceLength } = useAppStore.getState();
@@ -164,13 +197,7 @@ class AudioEngine {
                 return;
             }
 
-            this.updateMasterEffects();
-
             channels.forEach(channel => {
-                const nodes = this.getOrCreateChannelNodes(channel.id, channel.name);
-                nodes.volume.volume.value = Tone.gainToDb(channel.volume * (channel.mute ? 0 : 1));
-                nodes.panner.pan.value = channel.pan;
-
                 if (channel.sampleUrl && !this.samplers.has(channel.id)) {
                     this.samplers.set(channel.id, { loading: true });
                     this.loadSample(channel.id, channel.sampleUrl);
@@ -241,7 +268,6 @@ class AudioEngine {
             let finalDuration;
             if (typeof duration === 'number') {
                 // Duration is in steps (16th notes)
-                // Convert steps to seconds: Tone.Time('16n').toSeconds() * duration
                 finalDuration = Tone.Time('16n').toSeconds() * duration;
             } else {
                 finalDuration = duration; // '16n' or other string
@@ -297,14 +323,39 @@ class AudioEngine {
         }
     }
 
-    // Duplicate loadSample removed associated with AudioEngine.js:278
+    async previewSample(url) {
+        if (!this.initialized) await this.init();
+
+        // Dispose old preview if any to prevent overlap/leak
+        if (this.previewSampler) {
+            try {
+                this.previewSampler.dispose();
+            } catch (e) { }
+        }
+
+        return new Promise((resolve) => {
+            this.previewSampler = new Tone.Sampler({
+                urls: { C3: url },
+                onload: () => {
+                    this.previewSampler.toDestination();
+                    this.previewSampler.triggerAttackRelease('C3', '1n');
+                    resolve();
+                },
+                onerror: () => {
+                    console.warn("Preview load failed:", url);
+                    resolve();
+                }
+            });
+        });
+    }
 
     // Call this when Trim settings change
     refreshChannelSettings(channel) {
         const sampler = this.samplers.get(channel.id);
         const rawBuffer = this.rawBuffers?.get(channel.id);
 
-        if (sampler && rawBuffer && rawBuffer.loaded) {
+        // Safety: Ensure sampler is a real Tone.Sampler instance, not a { loading: true } placeholder
+        if (sampler && sampler instanceof Tone.Sampler && rawBuffer && rawBuffer.loaded) {
             const start = channel.trimStart || 0;
             const end = channel.trimEnd || 0;
 
@@ -324,6 +375,49 @@ class AudioEngine {
                 // Reset to full buffer
                 sampler.add('C3', rawBuffer);
             }
+        }
+    }
+
+    detectPitch(channelId) {
+        const buffer = this.rawBuffers?.get(channelId);
+        if (!buffer || !buffer.loaded) return null;
+
+        const floatData = buffer.toArray(0); // Use first channel
+        const sampleRate = buffer.sampleRate;
+
+        // We need a decent window. 4096 is good for low frequencies.
+        const fftSize = 4096;
+        const startOffset = Math.floor(Math.min(sampleRate * 0.1, floatData.length * 0.1)); // Skip initial silence/attack
+        const data = floatData.slice(startOffset, startOffset + fftSize);
+
+        if (data.length < fftSize) return null;
+
+        // Perform Autocorrelation
+        let bestR = -1;
+        let bestLag = -1;
+
+        // Search lags between 30Hz and 2000Hz
+        const minLag = Math.floor(sampleRate / 2000);
+        const maxLag = Math.floor(sampleRate / 30);
+
+        for (let lag = minLag; lag < maxLag; lag++) {
+            let r = 0;
+            for (let i = 0; i < fftSize - lag; i++) {
+                r += data[i] * data[i + lag];
+            }
+            if (r > bestR) {
+                bestR = r;
+                bestLag = lag;
+            }
+        }
+
+        if (bestLag === -1 || bestR < 5) return null; // 5 is a noise threshold
+
+        const freq = sampleRate / bestLag;
+        try {
+            return Tone.Frequency(freq).toNote();
+        } catch (e) {
+            return null;
         }
     }
 
@@ -347,9 +441,8 @@ class AudioEngine {
         }
 
         if (this.channelNodes.has(channelId)) {
-            const nodes = this.channelNodes.get(channelId);
-            if (nodes.panner) nodes.panner.dispose();
-            if (nodes.volume) nodes.volume.dispose();
+            const node = this.channelNodes.get(channelId);
+            if (node) node.dispose();
             this.channelNodes.delete(channelId);
         }
     }
