@@ -163,12 +163,22 @@ class AudioEngine {
         }
     }
 
+    // Bulk sync for project load or init
+    syncAllSettings() {
+        const { channels } = useAppStore.getState();
+        this.updateMasterEffects();
+        channels.forEach(ch => {
+            this.getOrCreateChannelNodes(ch.id, ch.name);
+            this.updateChannelSettings(ch);
+        });
+    }
+
     async init() {
         if (this.initialized) return;
         await Tone.start();
 
         const { channels } = useAppStore.getState();
-        channels.forEach(ch => this.getOrCreateChannelNodes(ch.id, ch.name));
+        this.syncAllSettings();
 
         Tone.getTransport().scheduleRepeat((time) => {
             const { currentStep, setCurrentStep, channels, playlistClips, sequenceLength } = useAppStore.getState();
@@ -187,14 +197,7 @@ class AudioEngine {
                 return;
             }
 
-            this.updateMasterEffects();
-
             channels.forEach(channel => {
-                const node = this.getOrCreateChannelNodes(channel.id, channel.name);
-
-                // Real-time sync for any changes not caught by UI (e.g. state loading)
-                this.updateChannelSettings(channel);
-
                 if (channel.sampleUrl && !this.samplers.has(channel.id)) {
                     this.samplers.set(channel.id, { loading: true });
                     this.loadSample(channel.id, channel.sampleUrl);

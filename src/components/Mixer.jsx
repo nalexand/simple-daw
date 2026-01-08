@@ -1,8 +1,9 @@
+import React, { memo } from 'react';
 import { useAppStore } from '../store/useAppStore';
 import { audioEngine } from '../audio/AudioEngine';
 
-const MixerStrip = ({ channel }) => {
-    const { updateChannel } = useAppStore();
+const MixerStrip = memo(({ channel }) => {
+    const updateChannel = useAppStore(state => state.updateChannel);
 
     return (
         <div style={{
@@ -106,10 +107,14 @@ const MixerStrip = ({ channel }) => {
             </div>
         </div>
     );
-};
+});
 
 const Mixer = () => {
-    const { channels, masterVolume, masterReverb, masterWidth } = useAppStore();
+    // Select specific state to avoid re-renders when currentStep changes
+    const channels = useAppStore(state => state.channels);
+    const masterVolume = useAppStore(state => state.masterVolume);
+    const masterReverb = useAppStore(state => state.masterReverb);
+    const masterWidth = useAppStore(state => state.masterWidth);
 
     // Stable way to update state
     const set = (update) => useAppStore.setState(update);
@@ -120,8 +125,8 @@ const Mixer = () => {
                 MIXER
             </div>
             <div style={{ flex: 1, display: 'flex', overflowX: 'auto', background: '#181818', minHeight: '350px' }}>
-                {(channels || []).map(ch => (
-                    <MixerStrip key={ch?.id || Math.random()} channel={ch} />
+                {(channels || []).map((ch, idx) => (
+                    <MixerStrip key={ch?.id || idx} channel={ch} />
                 ))}
 
                 {/* Master track */}
